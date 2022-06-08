@@ -4,7 +4,7 @@
 ## Author: Numy
 ## Version: @project-version@
 ## SavedVariables: TalentViewerDB
-## X-Curse-Project-ID: xxxxx
+## X-Curse-Project-ID: 631740
 
 libs\load_libs.xml
 
