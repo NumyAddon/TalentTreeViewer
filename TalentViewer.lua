@@ -6,6 +6,7 @@ TalentViewer = {
 	cache = {
 		classNames = {},
 		classFiles = {},
+		classIconId = {},
 		talents = {},
 		classSpecs = {},
 		sortedTalents = {},
@@ -13,6 +14,8 @@ TalentViewer = {
 		nodes = {},
 		tierLevel = {},
 		specIndexToIdMap = {},
+		specIconId = {},
+		defaultSpecs = {},
 	}
 }
 local cache = TalentViewer.cache
@@ -24,25 +27,26 @@ local LibDBIcon = LibStub('LibDBIcon-1.0')
 do
 	cache.specs = ns.data.specs
 	cache.talents = ns.data.talents
-
-	for i = 1, GetNumClasses() do
-		cache.classNames[i], cache.classFiles[i], _ = GetClassInfo(i)
-		cache.sharedTalents[i] = {}
-		cache.specIndexToIdMap[i] = {}
-		cache.classSpecs[i] = {}
-	end
+	cache.classes = ns.data.classes
 
 	for tier = 1, MAX_TALENT_TIERS do
-		for column = 1, NUM_TALENT_COLUMNS do
-			table.insert(cache.nodes, tier .. '-' .. column)
-		end
 		_, _, cache.tierLevel[tier] = GetTalentTierInfo(tier, 1)
+	end
+
+	for _, classInfo in pairs(cache.classes) do
+		cache.classNames[classInfo.classId], cache.classFiles[classInfo.classId], _ = GetClassInfo(classInfo.classId)
+		cache.sharedTalents[classInfo.classId] = {}
+		cache.specIndexToIdMap[classInfo.classId] = {}
+		cache.classSpecs[classInfo.classId] = {}
+		cache.defaultSpecs[classInfo.classId] = classInfo.defaultSpecId
+		cache.classIconId[classInfo.classId] = classInfo.iconId
 	end
 
 	for _, specInfo in pairs(cache.specs) do
 		if cache.classNames[specInfo.classId] and specInfo.index < 5 then
 			_, cache.classSpecs[specInfo.classId][specInfo.specId], _ = GetSpecializationInfoForSpecID(specInfo.specId)
 			cache.specIndexToIdMap[specInfo.classId][specInfo.index] = specInfo.specId
+			cache.specIconId[specInfo.specId] = specInfo.specIconId
 		end
 	end
 
@@ -69,7 +73,7 @@ do
 		if currentSpec then
 			specId, _ = cache.specIndexToIdMap[classId][currentSpec]
 		end
-		specId, _ = specId or cache.specIndexToIdMap[classId][1]
+		specId, _ = specId or cache.defaultSpecs[classId]
 		TalentViewer:SelectSpec(classId, specId)
 	end
 
@@ -288,7 +292,11 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 		local specMenuList = {}
 		for specId, specName in pairs(classSpecs) do
 			table.insert(specMenuList,{
-				text = specName,
+				text = string.format(
+					'|T%d:16|t %s',
+					cache.specIconId[specId],
+					specName
+				),
 				arg1 = specId,
 				arg2 = classId,
 				func = setValueFunc,
@@ -297,7 +305,11 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 		end
 
 		table.insert(menu, {
-			text = cache.classNames[classId],
+			text = string.format(
+				'|T%d:16|t %s',
+				cache.classIconId[classId],
+				cache.classNames[classId]
+			),
 			hasArrow = true,
 			menuList = specMenuList,
 			checked = isCheckedFunc,
