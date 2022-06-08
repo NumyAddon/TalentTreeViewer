@@ -1,0 +1,14 @@
+## Interface: @toc-version-retail@
+## Title: Talent Viewer
+## Notes: View any spec's talent trees from any character
+## Author: Numy
+## Version: @project-version@
+## SavedVariables: TalentViewerDB
+## X-Curse-Project-ID: xxxxx
+
+libs\load_libs.xml
+
+data.lua
+
+TalentViewer.lua
+TalentViewerUI.xml
