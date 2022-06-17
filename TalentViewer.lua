@@ -133,9 +133,26 @@ local function OnEvent(_, event, ...)
 		if addonName == 'BlizzMove' then TalentViewer:RegisterToBlizzMove() end
 		if addonName == 'ElvUI' then TalentViewer:ApplyElvUISkin() end
 	end
+	if event == 'PLAYER_ENTERING_WORLD' then
+		TalentViewer:OnPlayerEnteringWorld()
+		frame:UnregisterEvent('PLAYER_ENTERING_WORLD')
+	end
 end
 frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
+frame:RegisterEvent('PLAYER_ENTERING_WORLD')
+
+function TalentViewer:OnPlayerEnteringWorld()
+	if TalentViewer_PlayerTalentFrame:IsShown() then return end
+	local specId
+	local _, _, classId = UnitClass('player')
+	local currentSpec = GetSpecialization()
+	if currentSpec then
+		specId, _ = cache.specIndexToIdMap[classId][currentSpec]
+	end
+	specId, _ = specId or cache.defaultSpecs[classId]
+	TalentViewer:SelectSpec(classId, specId)
+end
 
 function TalentViewer:OnInitialize()
 	TalentViewerDB = TalentViewerDB or {}
