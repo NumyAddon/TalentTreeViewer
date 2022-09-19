@@ -3,6 +3,9 @@ if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print('this addon
 local name, ns = ...
 
 TalentViewer = {
+	purchasedRanks = {},
+	selectedEntries = {},
+	currencySpending = {},
 	cache = {
 		classNames = {},
 		classFiles = {},
@@ -83,22 +86,35 @@ do
 	removeFromMixing('RefreshLoadoutOptions')
 	removeFromMixing('InitializeLoadoutDropDown')
 	removeFromMixing('GetInspectUnit')
+	removeFromMixing('OnEvent')
 
 	local emptyTable = {}
 
 	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
 		local nodeInfo = libTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+		local isGranted = libTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
 
-		nodeInfo.activeRank = libTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID) and nodeInfo.maxRanks or TalentViewer:GetActiveRank(nodeID)
+		nodeInfo.activeRank = isGranted and nodeInfo.maxRanks or TalentViewer:GetActiveRank(nodeID)
 		nodeInfo.currentRank = nodeInfo.activeRank
-		nodeInfo.ranksPurchased = nodeInfo.currentRank
-		nodeInfo.isAvailable = true
-		nodeInfo.canPurchaseRank = true
-		nodeInfo.CanRefundRank = true
+		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
+		nodeInfo.isAvailable = true -- should depend on incoming edges
+		nodeInfo.canPurchaseRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
+		nodeInfo.canRefundRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) > 0)
 		nodeInfo.meetsEdgeRequirements = true
 
-		if #nodeInfo.entryIDs>1 then
-			local entryIndex = TalentViewer:GetSelectedEntryIndex(nodeID)
+		for _, edge in ipairs(nodeInfo.visibleEdges) do
+			edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
+		end
+
+		if #nodeInfo.entryIDs > 1 then
+			local entryId = TalentViewer:GetSelectedEntryId(nodeID)
+			local entryIndex
+			for i, entry in ipairs(nodeInfo.entryIDs) do
+				if entry == entryId then
+					entryIndex = i
+					break
+				end
+			end
 			nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or emptyTable
 		else
 			nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
@@ -109,7 +125,20 @@ do
 		return nodeInfo
 	end
 
+	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheCondInfo(condID)
+		local function GetCondInfoCallback()
+			local condInfo = C_Traits.GetConditionInfo(C_ClassTalents.GetActiveConfigID(), condID)
+			if condInfo.isGate then
+				condInfo.spentAmountRequired = condInfo.spentAmountRequired - (TalentViewer.currencySpending[condInfo.traitCurrencyID] or 0)
+				condInfo.isMet = condInfo.spentAmountRequired <= 0
+			end
+			return condInfo
+		end
+		return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
+	end
+
 	function TalentViewer_ClassTalentTalentsTabMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
+		local talentFrame = self
 		local talentButton = ClassTalentTalentsTabMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
 		function talentButton:OnClick(button)
 			EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
@@ -127,13 +156,17 @@ do
 
 		function talentButton:PurchaseRank()
 			self:PlaySelectSound();
-			TalentViewer:PurchaseRank(self:GetNodeID());
+			TalentViewer:PurchaseRank(self:GetNodeID(), self.nodeInfo);
+			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
+			talentFrame:UpdateTreeCurrencyInfo()
 			self:CheckTooltip();
 		end
 
 		function talentButton:RefundRank()
 			self:PlayDeselectSound();
-			TalentViewer:RefundRank(self:GetNodeID());
+			TalentViewer:RefundRank(self:GetNodeID(), self.nodeInfo);
+			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
+			talentFrame:UpdateTreeCurrencyInfo()
 			self:CheckTooltip();
 		end
 
@@ -141,9 +174,45 @@ do
 	end
 
 	function TalentViewer_ClassTalentTalentsTabMixin:SetSelection(nodeID, entryID)
-		print(entryID);
-		-- TalentViewer:SetSelection(nodeID, entryID)
+		TalentViewer:SetSelection(nodeID, entryID)
+		self:MarkNodeInfoCacheDirty(nodeID)
+		self:UpdateTreeCurrencyInfo()
 	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:ResetTree()
+		TalentViewer:ResetTree()
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:GetConfigID()
+		return C_ClassTalents.GetActiveConfigID()
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:CanAfford(cost)
+		return ClassTalentTalentsTabMixin.CanAfford(self, cost)
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:UpdateTreeCurrencyInfo()
+		self.treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(self:GetConfigID(), self:GetTalentTreeID(), self.excludeStagedChangesForCurrencies);
+
+		self.treeCurrencyInfoMap = {};
+		for _, treeCurrency in ipairs(self.treeCurrencyInfo) do
+			self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
+		end
+		self:UpdateAllButtons();
+
+		self:RefreshCurrencyDisplay();
+
+		-- TODO:: Replace this pattern of updating gates.
+		for condID, condInfo in pairs(self.condInfoCache) do
+			if condInfo.isGate then
+				self:MarkCondInfoCacheDirty(condID);
+				self:ForceCondInfoUpdate(condID);
+			end
+		end
+
+		self:RefreshGates();
+	end
+
 end
 
 ----------------------
@@ -228,18 +297,68 @@ frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
 frame:RegisterEvent('PLAYER_ENTERING_WORLD')
 
+function TalentViewer:ApplyCurrencySpending(treeCurrency)
+	local spending = self.currencySpending[treeCurrency.traitCurrencyID] or 0;
+	treeCurrency.spent = spending
+	treeCurrency.quantity = treeCurrency.maxQuantity - spending
+
+	return treeCurrency
+end
+
+function TalentViewer:ResetTree()
+	wipe(self.purchasedRanks)
+	wipe(self.selectedEntries)
+	wipe(self.currencySpending)
+	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
+	TalentViewer_DF.Talents:UpdateBasePanOffset()
+	TalentViewer_DF.Talents:UpdateSpecBackground();
+	--TalentViewer_DF.Talents:UpdateTreeCurrencyInfo();
+end
+
 function TalentViewer:GetActiveRank(nodeID)
-	return 0;
+	return self.purchasedRanks[nodeID] or 0;
 end
 
-function TalentViewer:GetSelectedEntryIndex(nodeID)
-	return 1;
+function TalentViewer:GetSelectedEntryId(nodeID)
+	return self.selectedEntries[nodeID];
 end
 
-function TalentViewer:PurchaseRank(nodeID)
+function TalentViewer:PurchaseRank(nodeID, nodeInfo)
+	self:ReduceCurrency(nodeID)
+	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1
 end
 
-function TalentViewer:RefundRank(nodeID)
+function TalentViewer:RefundRank(nodeID, nodeInfo)
+	self:RestoreCurrency(nodeID)
+	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1
+end
+
+function TalentViewer:SetSelection(nodeID, entryID)
+	if (entryID and not self.selectedEntries[nodeID]) then
+		self:ReduceCurrency(nodeID)
+	elseif (not entryID and self.selectedEntries[nodeID]) then
+		self:RestoreCurrency(nodeID)
+	end
+
+	self.selectedEntries[nodeID] = entryID
+end
+
+function TalentViewer:ReduceCurrency(nodeID)
+	local costInfo = C_Traits.GetNodeCost(C_ClassTalents.GetActiveConfigID(), nodeID)
+	if costInfo then
+		for _, cost in ipairs(costInfo) do
+			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount
+		end
+	end
+end
+
+function TalentViewer:RestoreCurrency(nodeID)
+	local costInfo = C_Traits.GetNodeCost(C_ClassTalents.GetActiveConfigID(), nodeID)
+	if costInfo then
+		for _, cost in ipairs(costInfo) do
+			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount
+		end
+	end
 end
 
 function TalentViewer:OnPlayerEnteringWorld()
@@ -328,9 +447,7 @@ function TalentViewer:SelectSpec(classId, specId)
 		cache.classSpecs[classId][specId]
 	))
 
-
-	TalentViewer_DF.Talents.talentTreeID = self.treeId;
-	TalentViewer_DF.Talents:LoadTalentTree();
+	self:ResetTree();
 end
 
 function TalentViewer:SetClassIcon(classId)
@@ -415,7 +532,14 @@ function TalentViewer:RegisterToBlizzMove()
 	if not BlizzMoveAPI then return end
 	BlizzMoveAPI:RegisterAddOnFrames(
 		{ [name] = {
-			['TalentViewer_DF'] = { MinVersion = 100000 },
+			['TalentViewer_DF'] = {
+				MinVersion = 100000,
+				SubFrames = {
+					['TalentViewer_DF.Talents.ButtonsParent'] = {
+						MinVersion = 100000,
+					}
+				}
+			},
 		} }
 	)
 end
