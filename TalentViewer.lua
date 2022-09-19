@@ -1,4 +1,4 @@
-if LE_EXPANSION_LEVEL_CURRENT > LE_EXPANSION_SHADOWLANDS then print('this addon does not work beyond shadowlands') return end
+if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print('this addon requires Dragonflight to work') return end
 
 local name, ns = ...
 
@@ -7,10 +7,7 @@ TalentViewer = {
 		classNames = {},
 		classFiles = {},
 		classIconId = {},
-		talents = {},
 		classSpecs = {},
-		sortedTalents = {},
-		sharedTalents = {},
 		nodes = {},
 		tierLevel = {},
 		specIndexToIdMap = {},
@@ -20,22 +17,18 @@ TalentViewer = {
 }
 local cache = TalentViewer.cache
 local LibDBIcon = LibStub('LibDBIcon-1.0')
+---@type LibTalentTree
+local libTalentTree = LibStub('LibTalentTree-0.1') -- should be updated to 1.0 once the library is finalized
 
 ----------------------
 --- Reorganize data
 ----------------------
 do
 	cache.specs = ns.data.specs
-	cache.talents = ns.data.talents
 	cache.classes = ns.data.classes
-
-	for tier = 1, MAX_TALENT_TIERS do
-		_, _, cache.tierLevel[tier] = GetTalentTierInfo(tier, 1)
-	end
 
 	for _, classInfo in pairs(cache.classes) do
 		cache.classNames[classInfo.classId], cache.classFiles[classInfo.classId], _ = GetClassInfo(classInfo.classId)
-		cache.sharedTalents[classInfo.classId] = {}
 		cache.specIndexToIdMap[classInfo.classId] = {}
 		cache.classSpecs[classInfo.classId] = {}
 		cache.defaultSpecs[classInfo.classId] = classInfo.defaultSpecId
@@ -43,20 +36,113 @@ do
 	end
 
 	for _, specInfo in pairs(cache.specs) do
-		if cache.classNames[specInfo.classId] and specInfo.index < 5 then
-			_, cache.classSpecs[specInfo.classId][specInfo.specId], _ = GetSpecializationInfoForSpecID(specInfo.specId)
-			cache.specIndexToIdMap[specInfo.classId][specInfo.index] = specInfo.specId
-			cache.specIconId[specInfo.specId] = specInfo.specIconId
+		if cache.classNames[specInfo.classId] then
+			local specName = select(2, GetSpecializationInfoForSpecID(specInfo.specId))
+			if specName ~= '' then
+				cache.classSpecs[specInfo.classId][specInfo.specId] = specName
+				cache.specIndexToIdMap[specInfo.classId][specInfo.index] = specInfo.specId
+				cache.specIconId[specInfo.specId] = specInfo.specIconId
+			end
 		end
 	end
+end
 
-	for _, talentInfo in pairs(cache.talents) do
-		if talentInfo.specId > 0 then
-			cache.sortedTalents[talentInfo.specId] = cache.sortedTalents[talentInfo.specId] or {}
-			cache.sortedTalents[talentInfo.specId][talentInfo.row .. '-' .. talentInfo.column] = talentInfo
+do
+
+	local deepCopy;
+	function deepCopy(original)
+		local originalType = type(original);
+		local copy;
+		if (originalType == 'table') then
+			copy = {};
+			for key, value in next, original, nil do
+				copy[deepCopy(key)] = deepCopy(value);
+			end
+			setmetatable(copy, deepCopy(getmetatable(original)));
 		else
-			cache.sharedTalents[talentInfo.classId][talentInfo.row .. '-' .. talentInfo.column] = talentInfo
+			copy = original;
 		end
+
+		return copy;
+	end
+
+	TalentViewer_ClassTalentTalentsTabMixin = deepCopy(ClassTalentTalentsTabMixin)
+	TalentViewer_TalentFrameBaseMixin = deepCopy(TalentFrameBaseMixin)
+
+	local function removeFromMixing(method) TalentViewer_ClassTalentTalentsTabMixin[method] = function() end end
+	function TalentViewer_ClassTalentTalentsTabMixin:GetClassID()
+		return TalentViewer.selectedClassId
+	end
+	function TalentViewer_ClassTalentTalentsTabMixin:GetSpecID()
+		return TalentViewer.selectedSpecId
+	end
+	function TalentViewer_ClassTalentTalentsTabMixin:IsInspecting()
+		return false
+	end
+	removeFromMixing('UpdateConfigButtonsState')
+	removeFromMixing('RefreshLoadoutOptions')
+	removeFromMixing('InitializeLoadoutDropDown')
+	removeFromMixing('GetInspectUnit')
+
+	local emptyTable = {}
+
+	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
+		local nodeInfo = libTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+
+		nodeInfo.activeRank = libTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID) and nodeInfo.maxRanks or TalentViewer:GetActiveRank(nodeID)
+		nodeInfo.currentRank = nodeInfo.activeRank
+		nodeInfo.ranksPurchased = nodeInfo.currentRank
+		nodeInfo.isAvailable = true
+		nodeInfo.canPurchaseRank = true
+		nodeInfo.CanRefundRank = true
+		nodeInfo.meetsEdgeRequirements = true
+
+		if #nodeInfo.entryIDs>1 then
+			local entryIndex = TalentViewer:GetSelectedEntryIndex(nodeID)
+			nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or emptyTable
+		else
+			nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
+		end
+
+		nodeInfo.isVisible = libTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
+
+		return nodeInfo
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
+		local talentButton = ClassTalentTalentsTabMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
+		function talentButton:OnClick(button)
+			EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
+
+			if button == "LeftButton" then
+				if self:CanPurchaseRank() then
+					self:PurchaseRank();
+				end
+			elseif button == "RightButton" then
+				if self:CanRefundRank() then
+					self:RefundRank();
+				end
+			end
+		end
+
+		function talentButton:PurchaseRank()
+			self:PlaySelectSound();
+			TalentViewer:PurchaseRank(self:GetNodeID());
+			self:CheckTooltip();
+		end
+
+		function talentButton:RefundRank()
+			self:PlayDeselectSound();
+			TalentViewer:RefundRank(self:GetNodeID());
+			self:CheckTooltip();
+		end
+
+		return talentButton
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:SetSelection(nodeID, entryID)
+		print(entryID);
+		-- TalentViewer:SetSelection(nodeID, entryID)
 	end
 end
 
@@ -64,8 +150,8 @@ end
 --- Script handles
 ----------------------
 do
-	function TalentViewer_PlayerTalentFrameTalents_OnLoad()
-		table.insert(UISpecialFrames, 'TalentViewer_PlayerTalentFrame')
+	function TalentViewer_DFMain_OnLoad()
+		table.insert(UISpecialFrames, 'TalentViewer_DF')
 		TalentViewer:InitDropDown()
 		local specId
 		local _, _, classId = UnitClass('player')
@@ -78,45 +164,45 @@ do
 	end
 
 	function TalentViewer_PlayerTalentButton_OnLoad(self)
-		self.icon:ClearAllPoints()
-		self.name:ClearAllPoints()
-		self.icon:SetPoint('LEFT', 35, 0)
-		self.name:SetSize(90, 35)
-		self.name:SetPoint('LEFT', self.icon, 'RIGHT', 10, 0)
-
-		self:RegisterForClicks('LeftButtonUp')
+		--self.icon:ClearAllPoints()
+		--self.name:ClearAllPoints()
+		--self.icon:SetPoint('LEFT', 35, 0)
+		--self.name:SetSize(90, 35)
+		--self.name:SetPoint('LEFT', self.icon, 'RIGHT', 10, 0)
+		--
+		--self:RegisterForClicks('LeftButtonUp')
 	end
 
 	function TalentViewer_PlayerTalentButton_OnClick(self)
-		if (IsModifiedClick('CHATLINK')) then
-			local spellName, _, _, _ = GetSpellInfo(self:GetID())
-			local talentLink, _ = GetSpellLink(self:GetID())
-			if ( MacroFrameText and MacroFrameText:HasFocus() ) then
-				if ( spellName and not IsPassiveSpell(spellName) ) then
-					local subSpellName = GetSpellSubtext(spellName)
-					if ( subSpellName ) then
-						if ( subSpellName ~= '' ) then
-							ChatEdit_InsertLink(spellName..'('..subSpellName..')')
-						else
-							ChatEdit_InsertLink(spellName)
-						end
-					else
-						ChatEdit_InsertLink(spellName)
-					end
-				end
-			elseif ( talentLink ) then
-				ChatEdit_InsertLink(talentLink)
-			end
-		end
+		--if (IsModifiedClick('CHATLINK')) then
+		--	local spellName, _, _, _ = GetSpellInfo(self:GetID())
+		--	local talentLink, _ = GetSpellLink(self:GetID())
+		--	if ( MacroFrameText and MacroFrameText:HasFocus() ) then
+		--		if ( spellName and not IsPassiveSpell(spellName) ) then
+		--			local subSpellName = GetSpellSubtext(spellName)
+		--			if ( subSpellName ) then
+		--				if ( subSpellName ~= '' ) then
+		--					ChatEdit_InsertLink(spellName..'('..subSpellName..')')
+		--				else
+		--					ChatEdit_InsertLink(spellName)
+		--				end
+		--			else
+		--				ChatEdit_InsertLink(spellName)
+		--			end
+		--		end
+		--	elseif ( talentLink ) then
+		--		ChatEdit_InsertLink(talentLink)
+		--	end
+		--end
 	end
 
 	function TalentViewer_PlayerTalentFrameTalent_OnEnter(self)
-		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
-		GameTooltip:SetSpellByID(self:GetID())
+		--GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		--GameTooltip:SetSpellByID(self:GetID())
 	end
 
 	function TalentViewer_PlayerTalentFrameTalent_OnLeave()
-		GameTooltip_Hide()
+		--GameTooltip_Hide()
 	end
 end
 
@@ -130,8 +216,8 @@ local function OnEvent(_, event, ...)
 			if(IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
 		end
 
-		if addonName == 'BlizzMove' then TalentViewer:RegisterToBlizzMove() end
-		if addonName == 'ElvUI' then TalentViewer:ApplyElvUISkin() end
+		----if addonName == 'BlizzMove' then TalentViewer:RegisterToBlizzMove() end
+		----if addonName == 'ElvUI' then TalentViewer:ApplyElvUISkin() end
 	end
 	if event == 'PLAYER_ENTERING_WORLD' then
 		TalentViewer:OnPlayerEnteringWorld()
@@ -142,8 +228,22 @@ frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
 frame:RegisterEvent('PLAYER_ENTERING_WORLD')
 
+function TalentViewer:GetActiveRank(nodeID)
+	return 0;
+end
+
+function TalentViewer:GetSelectedEntryIndex(nodeID)
+	return 1;
+end
+
+function TalentViewer:PurchaseRank(nodeID)
+end
+
+function TalentViewer:RefundRank(nodeID)
+end
+
 function TalentViewer:OnPlayerEnteringWorld()
-	if TalentViewer_PlayerTalentFrame:IsShown() then return end
+	if TalentViewer_DF:IsShown() then return end
 	local specId
 	local _, _, classId = UnitClass('player')
 	local currentSpec = GetSpecialization()
@@ -204,12 +304,12 @@ function TalentViewer:OnInitialize()
 end
 
 function TalentViewer:ToggleTalentView()
-	if TalentViewer_PlayerTalentFrame:IsShown() then
-		TalentViewer_PlayerTalentFrame:Hide()
+	if TalentViewer_DF:IsShown() then
+		TalentViewer_DF:Hide()
 
 		return
 	end
-	TalentViewer_PlayerTalentFrame:Show()
+	TalentViewer_DF:Show()
 end
 
 function TalentViewer:SelectSpec(classId, specId)
@@ -218,85 +318,37 @@ function TalentViewer:SelectSpec(classId, specId)
 
 	self.selectedClassId = classId
 	self.selectedSpecId = specId
+	self.treeId = libTalentTree:GetClassTreeId(classId)
 	self:SetClassIcon(classId)
 
-	TalentViewer_PlayerTalentFrame:SetTitle(string.format(
+	TalentViewer_DF:SetTitle(string.format(
 		'%s %s - %s',
 		cache.classNames[classId],
 		TALENTS,
 		cache.classSpecs[classId][specId]
 	))
 
-	for tier = 1, MAX_TALENT_TIERS do
-		local talentRow = TalentViewer_PlayerTalentFrameTalents['tier'..tier]
-		for column = 1, NUM_TALENT_COLUMNS do
-			local node = tier .. '-' .. column
-			local talentInfo = self:GetTalentInfoByNode(node)
-			if talentInfo then
-				local spellName, _, icon, _ = GetSpellInfo(talentInfo.spellId)
 
-				local button = talentRow['talent'..column]
-				button.tier = tier
-				button.column = column
-
-				button:SetID(talentInfo.spellId)
-
-				SetItemButtonTexture(button, icon)
-				if(button.name ~= nil) then
-					button.name:SetText(spellName)
-				end
-			end
-		end
-
-		if(talentRow.level ~= nil) then
-			talentRow.level:SetText(cache.tierLevel[tier])
-		end
-	end
-end
-
-function TalentViewer:GetTalentInfoByNode(node)
-	local talentInfo = cache.sortedTalents[self.selectedSpecId][node] or cache.sharedTalents[self.selectedClassId][node] or nil
-	if not talentInfo then
-		print(string.format(
-			'error: could not find a talent in row-col %s, for class [%s (%d)] spec [%s (%d)]',
-			node,
-			cache.classNames[self.selectedClassId],
-			self.selectedClassId,
-			cache.classSpecs[self.selectedClassId][self.selectedSpecId],
-			self.selectedSpecId
-		))
-
-		return nil
-	end
-
-	return talentInfo
+	TalentViewer_DF.Talents.talentTreeID = self.treeId;
+	TalentViewer_DF.Talents:LoadTalentTree();
 end
 
 function TalentViewer:SetClassIcon(classId)
 	local class = cache.classFiles[classId]
-	TalentViewer_PlayerTalentFrame:SetPortraitTextureRaw('Interface\\TargetingFrame\\UI-Classes-Circles')
-	TalentViewer_PlayerTalentFrame:SetPortraitTexCoord(unpack(CLASS_ICON_TCOORDS[class]))
+
+	local left, right, bottom, top = unpack(CLASS_ICON_TCOORDS[string.upper(class)]);
+	TalentViewer_DF.PortraitOverlay.Portrait:SetTexCoord(left, right, bottom, top);
 end
 
 function TalentViewer:MakeDropDownButton()
-	local mainButton = CreateFrame('BUTTON', nil, TalentViewer_PlayerTalentFrame, 'UIPanelButtonTemplate')
-	local dropDown = CreateFrame('FRAME', nil, TalentViewer_PlayerTalentFrame, 'UIDropDownMenuTemplate')
+	local mainButton = TalentViewer_DF.Talents.TV_DropDownButton
+	local dropDown = CreateFrame('FRAME', nil, TalentViewer_DF, 'UIDropDownMenuTemplate')
 
 	mainButton = Mixin(mainButton, DropDownToggleButtonMixin)
 	mainButton:OnLoad_Intrinsic()
 	mainButton:SetScript('OnMouseDown', function(self)
 		ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil)
 	end)
-
-	mainButton.Icon = mainButton:CreateTexture(nil, 'ARTWORK')
-	local icon = mainButton.Icon
-	icon:SetSize(10, 12)
-	icon:SetPoint('Right', -5, 0)
-	icon:SetTexture('Interface\\ChatFrame\\ChatFrameExpandArrow')
-
-	mainButton:SetText('Select another Specialization')
-	mainButton:SetSize(200, 22)
-	mainButton:SetPoint('TOPRIGHT', -10, -30)
 
 	dropDown:Hide()
 
@@ -362,11 +414,14 @@ end
 function TalentViewer:RegisterToBlizzMove()
 	if not BlizzMoveAPI then return end
 	BlizzMoveAPI:RegisterAddOnFrames(
-		{ [name] = { ['TalentViewer_PlayerTalentFrame'] = { MinVersion = 90000 } } }
+		{ [name] = {
+			['TalentViewer_DF'] = { MinVersion = 100000 },
+		} }
 	)
 end
 
 function TalentViewer:ApplyElvUISkin()
+	if true then return end
 	if self.skinned then return end
 	self.skinned = true
 	local S = unpack(ElvUI):GetModule('Skins')
@@ -376,31 +431,4 @@ function TalentViewer:ApplyElvUISkin()
 
 	-- loosely based on ElvUI's talent skinning code
 
-	S:HandlePortraitFrame(TalentViewer_PlayerTalentFrame)
-	TalentViewer_PlayerTalentFrameTalents:StripTextures()
-
-	do
-		for i = 1, MAX_TALENT_TIERS do
-			local row = TalentViewer_PlayerTalentFrameTalents['tier'..i]
-			row:StripTextures()
-
-			row.TopLine:Point('TOP', 0, 4)
-			row.BottomLine:Point('BOTTOM', 0, -4)
-
-			for j = 1, NUM_TALENT_COLUMNS do
-				local bu = row['talent'..j]
-
-				bu:StripTextures()
-				bu:SetFrameLevel(bu:GetFrameLevel() + 5)
-				bu.icon:SetDrawLayer('ARTWORK', 1)
-				S:HandleIcon(bu.icon, true)
-
-				bu.bg = CreateFrame('Frame', nil, bu)
-				bu.bg:SetTemplate()
-				bu.bg:SetFrameLevel(bu:GetFrameLevel() - 4)
-				bu.bg:Point('TOPLEFT', 15, 2)
-				bu.bg:Point('BOTTOMRIGHT', -10, -2)
-			end
-		end
-	end
 end
