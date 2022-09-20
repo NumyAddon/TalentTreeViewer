@@ -2,6 +2,7 @@ if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print('this addon
 
 local name, ns = ...
 
+--- @class TalentViewer
 TalentViewer = {
 	purchasedRanks = {},
 	selectedEntries = {},
@@ -14,14 +15,21 @@ TalentViewer = {
 		nodes = {},
 		tierLevel = {},
 		specIndexToIdMap = {},
+		specIdToClassIdMap = {},
 		specIconId = {},
 		defaultSpecs = {},
 	}
 }
+--- @type TalentViewer
+local TalentViewer = TalentViewer
+
+ns.ImportExport = {}
+ns.TalentViewer = TalentViewer
+
 local cache = TalentViewer.cache
 local LibDBIcon = LibStub('LibDBIcon-1.0')
 ---@type LibTalentTree
-local libTalentTree = LibStub('LibTalentTree-0.1') -- should be updated to 1.0 once the library is finalized
+local LibTalentTree = LibStub('LibTalentTree-0.1') -- should be updated to 1.0 once the library is finalized
 
 ----------------------
 --- Reorganize data
@@ -45,6 +53,7 @@ do
 				cache.classSpecs[specInfo.classId][specInfo.specId] = specName
 				cache.specIndexToIdMap[specInfo.classId][specInfo.index] = specInfo.specId
 				cache.specIconId[specInfo.specId] = specInfo.specIconId
+				cache.specIdToClassIdMap[specInfo.specId] = specInfo.classId
 			end
 		end
 	end
@@ -69,6 +78,7 @@ do
 		return copy;
 	end
 
+	--- @class TalentViewerTalentFrame
 	TalentViewer_ClassTalentTalentsTabMixin = deepCopy(ClassTalentTalentsTabMixin)
 	TalentViewer_TalentFrameBaseMixin = deepCopy(TalentFrameBaseMixin)
 
@@ -91,10 +101,14 @@ do
 	local emptyTable = {}
 
 	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
-		local nodeInfo = libTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
-		local isGranted = libTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
+		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
+		local isChoiceNode = #nodeInfo.entryIDs > 1
+		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
 
-		nodeInfo.activeRank = isGranted and nodeInfo.maxRanks or TalentViewer:GetActiveRank(nodeID)
+		nodeInfo.activeRank = isGranted
+				and nodeInfo.maxRanks
+				or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
 		nodeInfo.currentRank = nodeInfo.activeRank
 		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
 		nodeInfo.isAvailable = true -- should depend on incoming edges
@@ -107,10 +121,9 @@ do
 		end
 
 		if #nodeInfo.entryIDs > 1 then
-			local entryId = TalentViewer:GetSelectedEntryId(nodeID)
 			local entryIndex
-			for i, entry in ipairs(nodeInfo.entryIDs) do
-				if entry == entryId then
+			for i, entryId in ipairs(nodeInfo.entryIDs) do
+				if entryId == selectedEntryId then
 					entryIndex = i
 					break
 				end
@@ -120,7 +133,7 @@ do
 			nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
 		end
 
-		nodeInfo.isVisible = libTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
+		nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
 
 		return nodeInfo
 	end
@@ -129,7 +142,7 @@ do
 		local function GetCondInfoCallback()
 			local condInfo = C_Traits.GetConditionInfo(C_ClassTalents.GetActiveConfigID(), condID)
 			if condInfo.isGate then
-				local gates = libTalentTree:GetGates(self:GetSpecID())
+				local gates = LibTalentTree:GetGates(self:GetSpecID())
 				for _, gateInfo in pairs(gates) do
 					if gateInfo.conditionID == condID then
 						condInfo.spentAmountRequired = gateInfo.spentAmountRequired
@@ -142,6 +155,19 @@ do
 			return condInfo
 		end
 		return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:ImportLoadout(loadoutEntryInfo)
+		self:ResetTree()
+		for _, entry in ipairs(loadoutEntryInfo) do
+			if(entry.isChoiceNode) then
+				self:SetSelection(entry.nodeID, entry.selectionEntryID)
+			else
+				self:SetRank(entry.nodeID, entry.ranksPurchased)
+			end
+		end
+
+		return true;
 	end
 
 	function TalentViewer_ClassTalentTalentsTabMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
@@ -163,7 +189,7 @@ do
 
 		function talentButton:PurchaseRank()
 			self:PlaySelectSound();
-			TalentViewer:PurchaseRank(self:GetNodeID(), self.nodeInfo);
+			TalentViewer:PurchaseRank(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
 			self:CheckTooltip();
@@ -171,7 +197,7 @@ do
 
 		function talentButton:RefundRank()
 			self:PlayDeselectSound();
-			TalentViewer:RefundRank(self:GetNodeID(), self.nodeInfo);
+			TalentViewer:RefundRank(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
 			self:CheckTooltip();
@@ -182,6 +208,12 @@ do
 
 	function TalentViewer_ClassTalentTalentsTabMixin:SetSelection(nodeID, entryID)
 		TalentViewer:SetSelection(nodeID, entryID)
+		self:MarkNodeInfoCacheDirty(nodeID)
+		self:UpdateTreeCurrencyInfo()
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:SetRank(nodeID, rank)
+		TalentViewer:SetRank(nodeID, rank)
 		self:MarkNodeInfoCacheDirty(nodeID)
 		self:UpdateTreeCurrencyInfo()
 	end
@@ -202,7 +234,7 @@ do
 		self.traitCurrencyIDToGate = {};
 		self.gatePool:ReleaseAll();
 
-		local gates = libTalentTree:GetGates(self:GetSpecID());
+		local gates = LibTalentTree:GetGates(self:GetSpecID());
 
 		for _, gateInfo in ipairs(gates) do
 			local firstButton = self:GetTalentButtonByNodeID(gateInfo.topLeftNodeID);
@@ -246,11 +278,66 @@ end
 --- Script handles
 ----------------------
 do
+	--- @type TalentViewerImportExport
+	local ImportExport = ns.ImportExport
+
+	StaticPopupDialogs["TalentViewerExportDialog"] = {
+		text = "CTRL-C to copy",
+		button1 = CLOSE,
+		OnShow = function(dialog, data)
+			local function HidePopup()
+				dialog:Hide();
+			end
+			dialog.editBox:SetScript("OnEscapePressed", HidePopup);
+			dialog.editBox:SetScript("OnEnterPressed", HidePopup);
+			dialog.editBox:SetScript("OnKeyUp", function(_, key)
+				if IsControlKeyDown() and key == "C" then
+					HidePopup();
+				end
+			end);
+			dialog.editBox:SetMaxLetters(0);
+			dialog.editBox:SetText(data);
+			dialog.editBox:HighlightText();
+		end,
+		hasEditBox = true,
+		editBoxWidth = 240,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 3,
+	};
+	StaticPopupDialogs["TalentViewerImportDialog"] = {
+		text = "Import loadout",
+		button1 = OKAY,
+		button2 = CLOSE,
+		OnAccept = function(dialog)
+			ImportExport:ImportLoadout(dialog.editBox:GetText());
+			dialog:Hide();
+		end,
+		OnShow = function(dialog)
+			local function HidePopup()
+				dialog:Hide();
+			end
+			local function OnEnter()
+				dialog.button1:Click();
+			end
+			dialog.editBox:SetScript("OnEscapePressed", HidePopup);
+			dialog.editBox:SetScript("OnEnterPressed", OnEnter);
+		end,
+		hasEditBox = true,
+		editBoxWidth = 240,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 3,
+	};
+
 	function TalentViewer_ImportButton_OnClick()
-		-- TODO
+		StaticPopup_Show("TalentViewerImportDialog");
 	end
 	function TalentViewer_ExportButton_OnClick()
-		-- TODO
+		local exportString = ImportExport:GetLoadoutExportString();
+		StaticPopup_Show("TalentViewerExportDialog", _, _, exportString);
 	end
 
 	function TalentViewer_DFMain_OnLoad()
@@ -298,15 +385,6 @@ do
 		--	end
 		--end
 	end
-
-	function TalentViewer_PlayerTalentFrameTalent_OnEnter(self)
-		--GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
-		--GameTooltip:SetSpellByID(self:GetID())
-	end
-
-	function TalentViewer_PlayerTalentFrameTalent_OnLeave()
-		--GameTooltip_Hide()
-	end
 end
 
 local frame = CreateFrame('FRAME')
@@ -330,6 +408,11 @@ end
 frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
 frame:RegisterEvent('PLAYER_ENTERING_WORLD')
+
+---@return TalentViewerTalentFrame
+function TalentViewer:GetTalentFrame()
+	return TalentViewer_DF.Talents
+end
 
 function TalentViewer:ApplyCurrencySpending(treeCurrency)
 	local spending = self.currencySpending[treeCurrency.traitCurrencyID] or 0;
@@ -357,12 +440,25 @@ function TalentViewer:GetSelectedEntryId(nodeID)
 	return self.selectedEntries[nodeID];
 end
 
-function TalentViewer:PurchaseRank(nodeID, nodeInfo)
+function TalentViewer:SetRank(nodeID, rank)
+	local currentRank
+	repeat
+		currentRank = self.purchasedRanks[nodeID] or 0;
+		if currentRank == rank then return end
+		if rank > currentRank then
+			TalentViewer:PurchaseRank(nodeID)
+		else
+			TalentViewer:RefundRank(nodeID)
+		end
+	until currentRank == rank
+end
+
+function TalentViewer:PurchaseRank(nodeID)
 	self:ReduceCurrency(nodeID)
 	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1
 end
 
-function TalentViewer:RefundRank(nodeID, nodeInfo)
+function TalentViewer:RefundRank(nodeID)
 	self:RestoreCurrency(nodeID)
 	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1
 end
@@ -454,6 +550,16 @@ function TalentViewer:OnInitialize()
 		end
 		TalentViewer:ToggleTalentView()
 	end
+
+	self:PatchBlizzardImport()
+end
+
+function TalentViewer:PatchBlizzardImport()
+	-- This is the only(?) thing stopping us from importing 'bad' string to the blizzard UI
+	-- The main risk is that if the tree is changed significantly, weird things happen
+	function ClassTalentFrame.TalentsTab:HashEquals(a,b)
+		return true
+	end
 end
 
 function TalentViewer:ToggleTalentView()
@@ -471,7 +577,7 @@ function TalentViewer:SelectSpec(classId, specId)
 
 	self.selectedClassId = classId
 	self.selectedSpecId = specId
-	self.treeId = libTalentTree:GetClassTreeId(classId)
+	self.treeId = LibTalentTree:GetClassTreeId(classId)
 	self:SetClassIcon(classId)
 
 	TalentViewer_DF:SetTitle(string.format(
