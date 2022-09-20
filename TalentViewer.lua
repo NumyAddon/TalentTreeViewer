@@ -1,6 +1,6 @@
-if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print('this addon requires Dragonflight to work') return end
-
 local name, ns = ...
+
+if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
 --- @class TalentViewer
 TalentViewer = {
@@ -60,7 +60,6 @@ do
 end
 
 do
-
 	local deepCopy;
 	function deepCopy(original)
 		local originalType = type(original);
@@ -80,9 +79,14 @@ do
 
 	--- @class TalentViewerTalentFrame
 	TalentViewer_ClassTalentTalentsTabMixin = deepCopy(ClassTalentTalentsTabMixin)
-	TalentViewer_TalentFrameBaseMixin = deepCopy(TalentFrameBaseMixin)
 
 	local function removeFromMixing(method) TalentViewer_ClassTalentTalentsTabMixin[method] = function() end end
+	removeFromMixing('UpdateConfigButtonsState')
+	removeFromMixing('RefreshLoadoutOptions')
+	removeFromMixing('InitializeLoadoutDropDown')
+	removeFromMixing('GetInspectUnit')
+	removeFromMixing('OnEvent')
+
 	function TalentViewer_ClassTalentTalentsTabMixin:GetClassID()
 		return TalentViewer.selectedClassId
 	end
@@ -92,11 +96,6 @@ do
 	function TalentViewer_ClassTalentTalentsTabMixin:IsInspecting()
 		return false
 	end
-	removeFromMixing('UpdateConfigButtonsState')
-	removeFromMixing('RefreshLoadoutOptions')
-	removeFromMixing('InitializeLoadoutDropDown')
-	removeFromMixing('GetInspectUnit')
-	removeFromMixing('OnEvent')
 
 	local emptyTable = {}
 
@@ -111,7 +110,7 @@ do
 				or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
 		nodeInfo.currentRank = nodeInfo.activeRank
 		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
-		nodeInfo.isAvailable = true -- should depend on incoming edges
+		nodeInfo.isAvailable = true -- TODO: should depend on incoming edges
 		nodeInfo.canPurchaseRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
 		nodeInfo.canRefundRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) > 0)
 		nodeInfo.meetsEdgeRequirements = true
@@ -174,9 +173,11 @@ do
 		local talentFrame = self
 		local talentButton = ClassTalentTalentsTabMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
 		function talentButton:OnClick(button)
+			-- TODO should we trigger that event?
 			EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
 
 			if button == "LeftButton" then
+				-- TODO: if IsShiftKeyDown then link spellId to chat
 				if self:CanPurchaseRank() then
 					self:PurchaseRank();
 				end
@@ -352,39 +353,6 @@ do
 		specId, _ = specId or cache.defaultSpecs[classId]
 		TalentViewer:SelectSpec(classId, specId)
 	end
-
-	function TalentViewer_PlayerTalentButton_OnLoad(self)
-		--self.icon:ClearAllPoints()
-		--self.name:ClearAllPoints()
-		--self.icon:SetPoint('LEFT', 35, 0)
-		--self.name:SetSize(90, 35)
-		--self.name:SetPoint('LEFT', self.icon, 'RIGHT', 10, 0)
-		--
-		--self:RegisterForClicks('LeftButtonUp')
-	end
-
-	function TalentViewer_PlayerTalentButton_OnClick(self)
-		--if (IsModifiedClick('CHATLINK')) then
-		--	local spellName, _, _, _ = GetSpellInfo(self:GetID())
-		--	local talentLink, _ = GetSpellLink(self:GetID())
-		--	if ( MacroFrameText and MacroFrameText:HasFocus() ) then
-		--		if ( spellName and not IsPassiveSpell(spellName) ) then
-		--			local subSpellName = GetSpellSubtext(spellName)
-		--			if ( subSpellName ) then
-		--				if ( subSpellName ~= '' ) then
-		--					ChatEdit_InsertLink(spellName..'('..subSpellName..')')
-		--				else
-		--					ChatEdit_InsertLink(spellName)
-		--				end
-		--			else
-		--				ChatEdit_InsertLink(spellName)
-		--			end
-		--		end
-		--	elseif ( talentLink ) then
-		--		ChatEdit_InsertLink(talentLink)
-		--	end
-		--end
-	end
 end
 
 local frame = CreateFrame('FRAME')
@@ -396,9 +364,6 @@ local function OnEvent(_, event, ...)
 			if(IsAddOnLoaded('BlizzMove')) then TalentViewer:RegisterToBlizzMove() end
 			if(IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
 		end
-
-		----if addonName == 'BlizzMove' then TalentViewer:RegisterToBlizzMove() end
-		----if addonName == 'ElvUI' then TalentViewer:ApplyElvUISkin() end
 	end
 	if event == 'PLAYER_ENTERING_WORLD' then
 		TalentViewer:OnPlayerEnteringWorld()
@@ -429,7 +394,6 @@ function TalentViewer:ResetTree()
 	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
 	TalentViewer_DF.Talents:UpdateBasePanOffset()
 	TalentViewer_DF.Talents:UpdateSpecBackground();
-	--TalentViewer_DF.Talents:UpdateTreeCurrencyInfo();
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -504,8 +468,8 @@ function TalentViewer:OnPlayerEnteringWorld()
 end
 
 function TalentViewer:OnInitialize()
-	TalentViewerDB = TalentViewerDB or {}
-	self.db = TalentViewerDB
+	TalentTreeViewerDB = TalentTreeViewerDB or {}
+	self.db = TalentTreeViewerDB
 
 	if not self.db.ldbOptions then
 		self.db.ldbOptions = {
@@ -516,7 +480,7 @@ function TalentViewer:OnInitialize()
 		name,
 		{
 			type = 'data source',
-			text = 'Talent Viewer',
+			text = 'Talent Tree Viewer',
 			icon = 'interface/icons/inv_inscription_talenttome01.blp',
 			OnClick = function()
 				if IsShiftKeyDown() then
@@ -527,7 +491,7 @@ function TalentViewer:OnInitialize()
 				TalentViewer:ToggleTalentView()
 			end,
 			OnTooltipShow = function(tooltip)
-				tooltip:AddLine('Talent Viewer')
+				tooltip:AddLine('Talent Tree Viewer')
 				tooltip:AddLine('|cffeda55fClick|r to view the talents for any spec.')
 				tooltip:AddLine('|cffeda55fShift-Click|r to hide this button. (|cffeda55f/tv reset|r to restore)')
 			end,
@@ -537,6 +501,7 @@ function TalentViewer:OnInitialize()
 
 	SLASH_TALENT_VIEWER1 = '/tv'
 	SLASH_TALENT_VIEWER2 = '/talentviewer'
+	SLASH_TALENT_VIEWER3 = '/talenttreeviewer'
 	SlashCmdList['TALENT_VIEWER'] = function(message)
 		if message == 'reset' then
 			wipe(TalentViewer.db.ldbOptions)
@@ -671,16 +636,18 @@ end
 function TalentViewer:RegisterToBlizzMove()
 	if not BlizzMoveAPI then return end
 	BlizzMoveAPI:RegisterAddOnFrames(
-		{ [name] = {
-			['TalentViewer_DF'] = {
-				MinVersion = 100000,
-				SubFrames = {
-					['TalentViewer_DF.Talents.ButtonsParent'] = {
-						MinVersion = 100000,
-					}
-				}
+		{
+			[name] = {
+				['TalentViewer_DF'] = {
+					MinVersion = 100000,
+					SubFrames = {
+						['TalentViewer_DF.Talents.ButtonsParent'] = {
+							MinVersion = 100000,
+						},
+					},
+				},
 			},
-		} }
+		}
 	)
 end
 

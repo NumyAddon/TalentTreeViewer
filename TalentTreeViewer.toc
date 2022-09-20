@@ -1,11 +1,11 @@
 ## Interface: 100000
 # Interface: @toc-version-retail@
-## Title: Talent Viewer
+## Title: TalentTree Viewer
 ## Notes: View any spec's talent trees from any character
 ## Author: Numy
 ## Version: @project-version@
-## SavedVariables: TalentViewerDB
-## X-Curse-Project-ID: 631740
+## SavedVariables: TalentTreeViewerDB
+## X-Curse-Project-ID: 678279
 ## RequiredDeps: Blizzard_ClassTalentUI
 ## OptionalDeps: BlizzMove, ElvUI
 
