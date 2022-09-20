@@ -219,12 +219,18 @@
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="-5" y="3"/>
                 </Anchors>
+                <Scripts>
+                    <OnClick function="TalentViewer_ImportButton_OnClick"/>
+                </Scripts>
             </Button>
             <Button parentKey="ExportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Export">
                 <Size x="130" y="22"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="5" y="3"/>
                 </Anchors>
+                <Scripts>
+                    <OnClick function="TalentViewer_ExportButton_OnClick"/>
+                </Scripts>
             </Button>
 
             <Button parentKey="ResetButton" inherits="IconButtonTemplate">

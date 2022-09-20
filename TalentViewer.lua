@@ -129,6 +129,13 @@ do
 		local function GetCondInfoCallback()
 			local condInfo = C_Traits.GetConditionInfo(C_ClassTalents.GetActiveConfigID(), condID)
 			if condInfo.isGate then
+				local gates = libTalentTree:GetGates(self:GetSpecID())
+				for _, gateInfo in pairs(gates) do
+					if gateInfo.conditionID == condID then
+						condInfo.spentAmountRequired = gateInfo.spentAmountRequired
+						break
+					end
+				end
 				condInfo.spentAmountRequired = condInfo.spentAmountRequired - (TalentViewer.currencySpending[condInfo.traitCurrencyID] or 0)
 				condInfo.isMet = condInfo.spentAmountRequired <= 0
 			end
@@ -191,6 +198,26 @@ do
 		return ClassTalentTalentsTabMixin.CanAfford(self, cost)
 	end
 
+	function TalentViewer_ClassTalentTalentsTabMixin:RefreshGates()
+		self.traitCurrencyIDToGate = {};
+		self.gatePool:ReleaseAll();
+
+		local gates = libTalentTree:GetGates(self:GetSpecID());
+
+		for _, gateInfo in ipairs(gates) do
+			local firstButton = self:GetTalentButtonByNodeID(gateInfo.topLeftNodeID);
+			local condInfo = self:GetAndCacheCondInfo(gateInfo.conditionID);
+			if firstButton and self:ShouldDisplayGate(firstButton, condInfo) then
+				local gate = self.gatePool:Acquire();
+				gate:Init(self, firstButton, condInfo);
+				self:AnchorGate(gate, firstButton);
+				gate:Show();
+
+				self:OnGateDisplayed(gate, firstButton, condInfo);
+			end
+		end
+	end
+
 	function TalentViewer_ClassTalentTalentsTabMixin:UpdateTreeCurrencyInfo()
 		self.treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(self:GetConfigID(), self:GetTalentTreeID(), self.excludeStagedChangesForCurrencies);
 
@@ -219,6 +246,13 @@ end
 --- Script handles
 ----------------------
 do
+	function TalentViewer_ImportButton_OnClick()
+		-- TODO
+	end
+	function TalentViewer_ExportButton_OnClick()
+		-- TODO
+	end
+
 	function TalentViewer_DFMain_OnLoad()
 		table.insert(UISpecialFrames, 'TalentViewer_DF')
 		TalentViewer:InitDropDown()
