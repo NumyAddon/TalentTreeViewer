@@ -51,7 +51,7 @@ do
 			local specName = select(2, GetSpecializationInfoForSpecID(specInfo.specId))
 			if specName ~= '' then
 				cache.classSpecs[specInfo.classId][specInfo.specId] = specName
-				cache.specIndexToIdMap[specInfo.classId][specInfo.index] = specInfo.specId
+				cache.specIndexToIdMap[specInfo.classId][specInfo.index + 1] = specInfo.specId
 				cache.specIconId[specInfo.specId] = specInfo.specIconId
 				cache.specIdToClassIdMap[specInfo.specId] = specInfo.classId
 			end
