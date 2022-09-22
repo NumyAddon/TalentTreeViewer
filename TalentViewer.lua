@@ -392,7 +392,7 @@ function TalentViewer:ResetTree()
 	wipe(self.selectedEntries)
 	wipe(self.currencySpending)
 	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
-	TalentViewer_DF.Talents:UpdateBasePanOffset()
+	TalentViewer_DF.Talents:UpdateClassVisuals()
 	TalentViewer_DF.Talents:UpdateSpecBackground();
 end
 
