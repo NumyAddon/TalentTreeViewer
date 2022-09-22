@@ -517,6 +517,8 @@ function TalentViewer:OnInitialize()
 	end
 
 	self:PatchBlizzardImport()
+	self:AddButtonToBlizzardTalentFrame()
+	self:HookIntoBlizzardImport()
 end
 
 function TalentViewer:PatchBlizzardImport()
@@ -525,6 +527,57 @@ function TalentViewer:PatchBlizzardImport()
 	function ClassTalentFrame.TalentsTab:HashEquals(a,b)
 		return true
 	end
+end
+
+function TalentViewer:AddButtonToBlizzardTalentFrame()
+	local button = CreateFrame('Button', nil, ClassTalentFrame, 'UIPanelButtonTemplate')
+	button:SetText('Talent Viewer')
+	button:SetSize(100, 22)
+	button:SetPoint('TOPRIGHT', ClassTalentFrame, 'TOPRIGHT', -22, 0)
+	button:SetScript('OnClick', function()
+		TalentViewer:ToggleTalentView()
+	end)
+	button:SetFrameStrata('HIGH')
+end
+
+function TalentViewer:HookIntoBlizzardImport()
+	--- @type TalentViewerImportExport
+	local ImportExport = ns.ImportExport
+	local lastError
+	local importString
+
+	StaticPopupDialogs["TalentViewerDefaultImportFailedDialog"] = {
+		text = LOADOUT_ERROR_WRONG_SPEC .. "\n\n" .. "Would you like to open the build in Talent Viewer instead?",
+		button1 = OKAY,
+		button2 = CLOSE,
+		OnAccept = function(dialog)
+			ClassTalentLoadoutImportDialog:OnCancel()
+			ImportExport:ImportLoadout(importString)
+			if TalentViewer_DF:IsShown() then
+				TalentViewer_DF:Raise()
+			else
+				TalentViewer:ToggleTalentView()
+			end
+			dialog:Hide();
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 3,
+	};
+
+	hooksecurefunc(ClassTalentFrame.TalentsTab, 'ImportLoadout', function(self, str)
+		if lastError == LOADOUT_ERROR_WRONG_SPEC then
+			importString = str
+			StaticPopup_Hide('LOADOUT_IMPORT_ERROR_DIALOG')
+
+			StaticPopup_Show('TalentViewerDefaultImportFailedDialog')
+		end
+		lastError = nil
+	end)
+	hooksecurefunc(ClassTalentFrame.TalentsTab, 'ShowImportError', function(self, error)
+		lastError = error
+	end)
 end
 
 function TalentViewer:ToggleTalentView()

@@ -162,13 +162,7 @@ function ImportExport:ImportLoadout(importText)
     local loadoutContent = self:ReadLoadoutContent(importStream, treeId);
     local loadoutEntryInfo = self:ConvertToImportLoadoutEntryInfo(treeId, loadoutContent);
 
-    tmpEntryInfo = loadoutEntryInfo
-
-    local success = TalentViewer:GetTalentFrame():ImportLoadout(loadoutEntryInfo);
-    if(not success) then
-        self:ShowImportError(LOADOUT_ERROR_IMPORT_FAILED);
-        return false;
-    end
+    TalentViewer:GetTalentFrame():ImportLoadout(loadoutEntryInfo);
 
     return true;
 end
