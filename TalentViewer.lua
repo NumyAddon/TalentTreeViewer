@@ -101,6 +101,8 @@ do
 
 	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
 		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+		if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID) end
+		if nodeInfo.ID ~= nodeID then return nil end
 		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
 		local isChoiceNode = #nodeInfo.entryIDs > 1
 		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
@@ -602,7 +604,7 @@ function TalentViewer:SelectSpec(classId, specId)
 		'%s %s - %s',
 		cache.classNames[classId],
 		TALENTS,
-		cache.classSpecs[classId][specId]
+		cache.classSpecs[classId][specId] or ''
 	))
 
 	self:ResetTree();
