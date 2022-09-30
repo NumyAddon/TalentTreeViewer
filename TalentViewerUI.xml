@@ -399,7 +399,7 @@
             <Frame parentKey="PortraitOverlay" frameLevel="5000" setAllPoints="true">
                 <Layers>
                     <Layer level="BACKGROUND" textureSubLevel="1">
-                        <Texture parentKey="Portrait" file="Interface\TargetingFrame\UI-Classes-Circles">
+                        <Texture parentKey="Portrait">
                             <Size x="61" y="61"/>
                             <Anchors>
                                 <Anchor point="TOPLEFT" x="-6" y="8"/>

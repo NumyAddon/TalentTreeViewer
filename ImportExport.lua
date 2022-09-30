@@ -124,10 +124,9 @@ function ImportExport:GetLoadoutExportString()
     local configID = self:GetConfigID();
     local currentSpecID = self:GetSpecId();
     local treeId = self:GetTreeId();
-    local treeHash = C_Traits.GetTreeHash(configID, treeId);
 
 
-    self:WriteLoadoutHeader(exportStream, LOADOUT_SERIALIZATION_VERSION, currentSpecID, treeHash);
+    self:WriteLoadoutHeader(exportStream, LOADOUT_SERIALIZATION_VERSION, currentSpecID);
     self:WriteLoadoutContent(exportStream, configID, treeId);
 
     return exportStream:GetExportString();
@@ -167,13 +166,12 @@ function ImportExport:ImportLoadout(importText)
     return true;
 end
 
-function ImportExport:WriteLoadoutHeader(exportStream, serializationVersion, specID, treeHash)
+function ImportExport:WriteLoadoutHeader(exportStream, serializationVersion, specID)
     exportStream:AddValue(self.bitWidthHeaderVersion, serializationVersion);
     exportStream:AddValue(self.bitWidthSpecID, specID);
     -- treeHash is a 128bit hash, passed as an array of 16, 8-bit values
-    for _, hashVal in ipairs(treeHash) do
-        exportStream:AddValue(8, hashVal);
-    end
+    -- empty tree hash will disable validation on import
+    exportStream:AddValue(8 * 16, 0);
 end
 
 function ImportExport:ReadLoadoutHeader(importStream)

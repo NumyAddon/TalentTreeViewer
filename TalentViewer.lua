@@ -29,7 +29,7 @@ ns.TalentViewer = TalentViewer
 local cache = TalentViewer.cache
 local LibDBIcon = LibStub('LibDBIcon-1.0')
 ---@type LibTalentTree
-local LibTalentTree = LibStub('LibTalentTree-0.1') -- should be updated to 1.0 once the library is finalized
+local LibTalentTree = LibStub('LibTalentTree-1.0')
 
 ----------------------
 --- Reorganize data
@@ -107,15 +107,26 @@ do
 		local isChoiceNode = #nodeInfo.entryIDs > 1
 		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
 
+		local meetsEdgeRequirements = true
+		local meetsGateRequirements = true
+		if not TalentViewer.db.ignoreRestrictions then
+			for _, conditionId in ipairs(nodeInfo.conditionIDs) do
+				local condInfo = self:GetAndCacheCondInfo(conditionId)
+				if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
+			end
+		end
+
+		local isAvailable = meetsEdgeRequirements and meetsGateRequirements
+
 		nodeInfo.activeRank = isGranted
 				and nodeInfo.maxRanks
 				or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
 		nodeInfo.currentRank = nodeInfo.activeRank
 		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
-		nodeInfo.isAvailable = true -- TODO: should depend on incoming edges
-		nodeInfo.canPurchaseRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
+		nodeInfo.isAvailable = isAvailable
+		nodeInfo.canPurchaseRank = isAvailable and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
 		nodeInfo.canRefundRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) > 0)
-		nodeInfo.meetsEdgeRequirements = true
+		nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
 
 		for _, edge in ipairs(nodeInfo.visibleEdges) do
 			edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
@@ -195,7 +206,7 @@ do
 			TalentViewer:PurchaseRank(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
-			self:CheckTooltip();
+			--self:CheckTooltip();
 		end
 
 		function talentButton:RefundRank()
@@ -203,7 +214,7 @@ do
 			TalentViewer:RefundRank(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
-			self:CheckTooltip();
+			--self:CheckTooltip();
 		end
 
 		return talentButton
@@ -257,10 +268,10 @@ do
 		self.treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(self:GetConfigID(), self:GetTalentTreeID(), self.excludeStagedChangesForCurrencies);
 
 		self.treeCurrencyInfoMap = {};
-		for _, treeCurrency in ipairs(self.treeCurrencyInfo) do
+		for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
+			treeCurrency.maxQuantity = i == 1 and 31 or 30;
 			self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
 		end
-		self:UpdateAllButtons();
 
 		self:RefreshCurrencyDisplay();
 
@@ -273,6 +284,9 @@ do
 		end
 
 		self:RefreshGates();
+		for talentButton in self:EnumerateAllTalentButtons() do
+			self:MarkNodeInfoCacheDirty(talentButton:GetNodeID());
+		end
 	end
 
 end
@@ -478,6 +492,9 @@ function TalentViewer:OnInitialize()
 			hide = false,
 		}
 	end
+	if self.db.ignoreRestrictions == nil then
+		self.db.ignoreRestrictions = true
+	end
 	local dataObject = LibStub('LibDataBroker-1.1'):NewDataObject(
 		name,
 		{
@@ -518,17 +535,8 @@ function TalentViewer:OnInitialize()
 		TalentViewer:ToggleTalentView()
 	end
 
-	self:PatchBlizzardImport()
 	self:AddButtonToBlizzardTalentFrame()
 	self:HookIntoBlizzardImport()
-end
-
-function TalentViewer:PatchBlizzardImport()
-	-- This is the only(?) thing stopping us from importing 'bad' string to the blizzard UI
-	-- The main risk is that if the tree is changed significantly, weird things happen
-	function ClassTalentFrame.TalentsTab:HashEquals(a,b)
-		return true
-	end
 end
 
 function TalentViewer:AddButtonToBlizzardTalentFrame()
@@ -598,7 +606,7 @@ function TalentViewer:SelectSpec(classId, specId)
 	self.selectedClassId = classId
 	self.selectedSpecId = specId
 	self.treeId = LibTalentTree:GetClassTreeId(classId)
-	self:SetClassIcon(classId)
+	self:SetPortraitIcon(specId)
 
 	TalentViewer_DF:SetTitle(string.format(
 		'%s %s - %s',
@@ -610,11 +618,10 @@ function TalentViewer:SelectSpec(classId, specId)
 	self:ResetTree();
 end
 
-function TalentViewer:SetClassIcon(classId)
-	local class = cache.classFiles[classId]
-
-	local left, right, bottom, top = unpack(CLASS_ICON_TCOORDS[string.upper(class)]);
-	TalentViewer_DF.PortraitOverlay.Portrait:SetTexCoord(left, right, bottom, top);
+function TalentViewer:SetPortraitIcon(specId)
+	local icon = cache.specIconId[specId]
+	TalentViewer_DF:SetPortraitTexCoord(0, 1, 0, 1);
+	TalentViewer_DF:SetPortraitToAsset(icon);
 end
 
 function TalentViewer:MakeDropDownButton()
