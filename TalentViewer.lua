@@ -2,6 +2,9 @@ local name, ns = ...
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
+local MAX_LEVEL_CLASS_CURRENCY_CAP = 31
+local MAX_LEVEL_SPEC_CURRENCY_CAP = 30
+
 --- @class TalentViewer
 TalentViewer = {
 	purchasedRanks = {},
@@ -269,7 +272,8 @@ do
 
 		self.treeCurrencyInfoMap = {};
 		for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
-			treeCurrency.maxQuantity = i == 1 and 31 or 30;
+			-- hardcode currency cap to lvl 70 values
+			treeCurrency.maxQuantity = i == 1 and MAX_LEVEL_CLASS_CURRENCY_CAP or MAX_LEVEL_SPEC_CURRENCY_CAP;
 			self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
 		end
 
@@ -289,6 +293,41 @@ do
 		end
 	end
 
+	function TalentViewer_ClassTalentTalentsTabMixin:RefreshCurrencyDisplay()
+		local classCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[1] or nil;
+		local classInfo = self:GetClassInfo();
+		self.ClassCurrencyDisplay:SetPointTypeText(string.upper(classInfo.className));
+		self.ClassCurrencyDisplay:SetAmount(classCurrencyInfo and classCurrencyInfo.quantity or 0);
+
+		local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
+		self.SpecCurrencyDisplay:SetPointTypeText(string.upper(self:GetSpecName()));
+		self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:OnLoad()
+		ClassTalentTalentsTabMixin.OnLoad(self)
+
+		local setAmountOverride = function(self, amount)
+			local requiredLevel = self.isClassCurrency and 8 or 9;
+			local spent = (self.isClassCurrency and MAX_LEVEL_CLASS_CURRENCY_CAP or MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
+			requiredLevel = math.max(10, requiredLevel + (spent * 2));
+
+			local text = string.format('%d (level %d)', amount, requiredLevel);
+
+			self.CurrencyAmount:SetText(text);
+
+			local enabled = not self:IsInspecting() and (amount > 0);
+			local textColor = enabled and GREEN_FONT_COLOR or GRAY_FONT_COLOR;
+			self.CurrencyAmount:SetTextColor(textColor:GetRGBA());
+
+			self:MarkDirty();
+		end
+
+		self.ClassCurrencyDisplay.SetAmount = setAmountOverride
+		self.ClassCurrencyDisplay.isClassCurrency = true
+		self.SpecCurrencyDisplay.SetAmount = setAmountOverride
+		self.SpecCurrencyDisplay.isClassCurrency = false
+	end
 end
 
 ----------------------
