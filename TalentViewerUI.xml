@@ -193,7 +193,7 @@
             </Frame>
 
             <Button parentKey="TV_DropDownButton" inherits="UIPanelButtonTemplate" text="Select another Specialization">
-                <Size x="220" y="22"/>
+                <Size x="220" y="25"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="LEFT" x="48" y="0"/>
                 </Anchors>
@@ -261,7 +261,7 @@
             </Button>
 
             <Button parentKey="ImportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Import">
-                <Size x="130" y="22"/>
+                <Size x="130" y="25"/>
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="-5" y="3"/>
                 </Anchors>
@@ -270,7 +270,7 @@
                 </Scripts>
             </Button>
             <Button parentKey="ExportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Export">
-                <Size x="130" y="22"/>
+                <Size x="130" y="25"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="5" y="3"/>
                 </Anchors>
@@ -279,7 +279,7 @@
                 </Scripts>
             </Button>
             <CheckButton parentKey="IgnoreRestrictions" inherits="UICheckButtonTemplate">
-                <Size x="22" y="22"/>
+                <Size x="25" y="25"/>
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.ImportButton" relativePoint="LEFT" x="-110"/>
                 </Anchors>

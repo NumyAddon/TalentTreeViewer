@@ -102,59 +102,129 @@ do
 
 	local emptyTable = {}
 
-	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
-		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
-		if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID) end
-		if nodeInfo.ID ~= nodeID then return nil end
-		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
-		local isChoiceNode = #nodeInfo.entryIDs > 1
-		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
-
-		local meetsEdgeRequirements = true
-		local meetsGateRequirements = true
-		if not TalentViewer.db.ignoreRestrictions then
-			for _, conditionId in ipairs(nodeInfo.conditionIDs) do
-				local condInfo = self:GetAndCacheCondInfo(conditionId)
-				if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
-			end
+	local nodeEdgesCache = {}
+	local function getNodeEdges(nodeID)
+		if not nodeEdgesCache[nodeID] then
+			nodeEdgesCache[nodeID] = LibTalentTree:GetNodeEdges(TalentViewer.treeId, nodeID) or emptyTable
 		end
+		return nodeEdgesCache[nodeID]
+	end
 
-		local isAvailable = meetsEdgeRequirements and meetsGateRequirements
-
-		nodeInfo.activeRank = isGranted
-				and nodeInfo.maxRanks
-				or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
-		nodeInfo.currentRank = nodeInfo.activeRank
-		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
-		nodeInfo.isAvailable = isAvailable
-		nodeInfo.canPurchaseRank = isAvailable and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
-		nodeInfo.canRefundRank = not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) > 0)
-		nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
-
-		for _, edge in ipairs(nodeInfo.visibleEdges) do
-			edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
-		end
-
-		if #nodeInfo.entryIDs > 1 then
-			local entryIndex
-			for i, entryId in ipairs(nodeInfo.entryIDs) do
-				if entryId == selectedEntryId then
-					entryIndex = i
-					break
+	local incomingNodeEdgesCache = {}
+	local function getIncomingNodeEdges(nodeID)
+		local function getIncomingNodeEdgesCallback(nodeID)
+			local incomingEdges = {}
+			for _, treeNodeId in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
+				local edges = getNodeEdges(treeNodeId)
+				for _, edge in ipairs(edges) do
+					if edge.targetNode == nodeID then
+						table.insert(incomingEdges, treeNodeId)
+					end
 				end
 			end
-			nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or emptyTable
-		else
-			nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
+			return incomingEdges
 		end
 
-		nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
+		return GetOrCreateTableEntryByCallback(incomingNodeEdgesCache, nodeID, getIncomingNodeEdgesCallback)
+	end
 
-		return nodeInfo
+	function TalentViewer_ClassTalentTalentsTabMixin:MarkEdgeRequirementCacheDirty(nodeID)
+		local edges = getNodeEdges(nodeID)
+		for _, edge in ipairs(edges) do
+			self.edgeRequirementsCache[edge.targetNode] = nil
+		end
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:MeetsEdgeRequirements(nodeID)
+		local function EdgeRequirementCallback(nodeID)
+			local incomingEdges = getIncomingNodeEdges(nodeID)
+			local hasActiveIncomingEdge = false
+			local hasInactiveIncomingEdge = false
+			for _, incomingNodeId in ipairs(incomingEdges) do
+				local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, incomingNodeId)
+				if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, incomingNodeId) end
+				if nodeInfo and LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, incomingNodeId) then
+					local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, incomingNodeId)
+					local isChoiceNode = #nodeInfo.entryIDs > 1
+					local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(incomingNodeId) or nil
+					local activeRank = isGranted
+							and nodeInfo.maxRanks
+							or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(incomingNodeId))
+					local isEdgeActive = activeRank == nodeInfo.maxRanks
+
+					if not isEdgeActive then
+						hasInactiveIncomingEdge = true
+					else
+						hasActiveIncomingEdge = true
+					end
+				end
+			end
+
+			return not hasInactiveIncomingEdge or hasActiveIncomingEdge
+		end
+
+		return GetOrCreateTableEntryByCallback(self.edgeRequirementsCache, nodeID, EdgeRequirementCallback)
+	end
+
+	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheNodeInfo(nodeID)
+		local function GetNodeInfoCallback(nodeID)
+			local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+			if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID) end
+			if nodeInfo.ID ~= nodeID then return nil end
+			local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
+			local isChoiceNode = #nodeInfo.entryIDs > 1
+			local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
+
+			local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID)
+			local meetsGateRequirements = true
+			if not TalentViewer.db.ignoreRestrictions then
+				for _, conditionId in ipairs(nodeInfo.conditionIDs) do
+					local condInfo = self:GetAndCacheCondInfo(conditionId)
+					if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
+				end
+			end
+
+			local isAvailable = meetsGateRequirements
+
+			nodeInfo.activeRank = isGranted
+				and nodeInfo.maxRanks
+				or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
+			nodeInfo.currentRank = nodeInfo.activeRank
+			nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
+			nodeInfo.isAvailable = isAvailable
+			nodeInfo.canPurchaseRank = isAvailable and meetsEdgeRequirements and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
+			nodeInfo.canRefundRank = not isGranted
+			nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
+
+			for _, edge in ipairs(nodeInfo.visibleEdges) do
+				edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
+			end
+
+			if #nodeInfo.entryIDs > 1 then
+				local entryIndex
+				for i, entryId in ipairs(nodeInfo.entryIDs) do
+					if entryId == selectedEntryId then
+						entryIndex = i
+						break
+					end
+				end
+				nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or nil
+			else
+				nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
+			end
+			if not isChoiceNode and nodeInfo.activeRank ~= nodeInfo.maxRanks then
+				nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1 }
+			end
+
+			nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
+
+			return nodeInfo
+		end
+		return GetOrCreateTableEntryByCallback(self.nodeInfoCache, nodeID, GetNodeInfoCallback);
 	end
 
 	function TalentViewer_ClassTalentTalentsTabMixin:GetAndCacheCondInfo(condID)
-		local function GetCondInfoCallback()
+		local function GetCondInfoCallback(condID)
 			local condInfo = C_Traits.GetConditionInfo(C_ClassTalents.GetActiveConfigID(), condID)
 			if condInfo.isGate then
 				local gates = LibTalentTree:GetGates(self:GetSpecID())
@@ -203,10 +273,15 @@ do
 				end
 			end
 		end
+		function talentButton:CanRefundRank()
+			-- remove this method override if/when "cascaded refunds" are implemented
+			return self.nodeInfo.canRefundRank and self.nodeInfo.ranksPurchased and (self.nodeInfo.ranksPurchased > 0);
+		end
 
 		function talentButton:PurchaseRank()
 			self:PlaySelectSound();
 			TalentViewer:PurchaseRank(self:GetNodeID());
+			talentFrame:MarkEdgeRequirementCacheDirty(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
 			--self:CheckTooltip();
@@ -215,6 +290,7 @@ do
 		function talentButton:RefundRank()
 			self:PlayDeselectSound();
 			TalentViewer:RefundRank(self:GetNodeID());
+			talentFrame:MarkEdgeRequirementCacheDirty(self:GetNodeID());
 			talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID())
 			talentFrame:UpdateTreeCurrencyInfo()
 			--self:CheckTooltip();
@@ -225,6 +301,7 @@ do
 
 	function TalentViewer_ClassTalentTalentsTabMixin:SetSelection(nodeID, entryID)
 		TalentViewer:SetSelection(nodeID, entryID)
+		self:MarkEdgeRequirementCacheDirty(nodeID);
 		self:MarkNodeInfoCacheDirty(nodeID)
 		self:UpdateTreeCurrencyInfo()
 	end
@@ -306,6 +383,8 @@ do
 
 	function TalentViewer_ClassTalentTalentsTabMixin:OnLoad()
 		ClassTalentTalentsTabMixin.OnLoad(self)
+
+		self.edgeRequirementsCache = {}
 
 		local setAmountOverride = function(self, amount)
 			local requiredLevel = self.isClassCurrency and 8 or 9;
@@ -447,6 +526,7 @@ function TalentViewer:ResetTree()
 	wipe(self.purchasedRanks)
 	wipe(self.selectedEntries)
 	wipe(self.currencySpending)
+	wipe(self:GetTalentFrame().edgeRequirementsCache)
 	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
 	TalentViewer_DF.Talents:UpdateClassVisuals()
 	TalentViewer_DF.Talents:UpdateSpecBackground();
@@ -526,7 +606,7 @@ end
 function TalentViewer:OnInitialize()
 	local defaults = {
 		ldbOptions = { hide = false },
-		ignoreRestrictions = true,
+		ignoreRestrictions = false,
 	}
 
 	TalentTreeViewerDB = TalentTreeViewerDB or {}
@@ -725,12 +805,19 @@ function TalentViewer:InitCheckbox()
 	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions
 	local checkbox = self.ignoreRestrictionsCheckbox
 	checkbox.Text:SetText('Ignore Restrictions')
-	checkbox.tooltip = 'Ignore restrictions when selecting talents'
 	if self.db then
 		checkbox:SetChecked(self.db.ignoreRestrictions)
 	end
-	checkbox:SetScript('OnClick', function(checkbox)
-		self.db.ignoreRestrictions = checkbox:GetChecked()
+	checkbox:SetScript('OnEnter', function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+		GameTooltip_AddNormalLine(GameTooltip, 'Ignore restrictions when selecting talents');
+		GameTooltip:Show();
+	end)
+	checkbox:SetScript('OnLeave', function(self)
+		GameTooltip:Hide();
+	end)
+	checkbox:SetScript('OnClick', function(button)
+		self.db.ignoreRestrictions = button:GetChecked()
 		self:GetTalentFrame():UpdateTreeCurrencyInfo()
 	end)
 end
