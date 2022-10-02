@@ -278,6 +278,13 @@
                     <OnClick function="TalentViewer_ExportButton_OnClick"/>
                 </Scripts>
             </Button>
+            <CheckButton parentKey="IgnoreRestrictions" inherits="UICheckButtonTemplate">
+                <Size x="22" y="22"/>
+                <Anchors>
+                    <Anchor point="RIGHT" relativeKey="$parent.ImportButton" relativePoint="LEFT" x="-110"/>
+                </Anchors>
+                <HitRectInsets left="0" right="-100" top="0" bottom="0"/>
+            </CheckButton>
 
             <Button parentKey="ResetButton" inherits="IconButtonTemplate">
                 <KeyValues>

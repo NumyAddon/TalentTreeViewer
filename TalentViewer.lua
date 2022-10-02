@@ -360,6 +360,7 @@ do
 	function TalentViewer_DFMain_OnLoad()
 		table.insert(UISpecialFrames, 'TalentViewer_DF')
 		TalentViewer:InitDropDown()
+		TalentViewer:InitCheckbox()
 		local specId
 		local _, _, classId = UnitClass('player')
 		local currentSpec = GetSpecialization()
@@ -484,17 +485,20 @@ function TalentViewer:OnPlayerEnteringWorld()
 end
 
 function TalentViewer:OnInitialize()
+	local defaults = {
+		ldbOptions = { hide = false },
+		ignoreRestrictions = true,
+	}
+
 	TalentTreeViewerDB = TalentTreeViewerDB or {}
 	self.db = TalentTreeViewerDB
 
-	if not self.db.ldbOptions then
-		self.db.ldbOptions = {
-			hide = false,
-		}
+	for key, value in pairs(defaults) do
+		if self.db[key] == nil then
+			self.db[key] = value
+		end
 	end
-	if self.db.ignoreRestrictions == nil then
-		self.db.ignoreRestrictions = true
-	end
+
 	local dataObject = LibStub('LibDataBroker-1.1'):NewDataObject(
 		name,
 		{
@@ -517,6 +521,10 @@ function TalentViewer:OnInitialize()
 		}
 	)
 	LibDBIcon:Register(name, dataObject, self.db.ldbOptions)
+
+	if(self.ignoreRestrictionsCheckbox) then
+		self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions)
+	end
 
 	SLASH_TALENT_VIEWER1 = '/tv'
 	SLASH_TALENT_VIEWER2 = '/talentviewer'
@@ -671,6 +679,21 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 	end
 
 	return menu
+end
+
+function TalentViewer:InitCheckbox()
+	if self.ignoreRestrictionsCheckbox then return end
+	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions
+	local checkbox = self.ignoreRestrictionsCheckbox
+	checkbox.Text:SetText('Ignore Restrictions')
+	checkbox.tooltip = 'Ignore restrictions when selecting talents'
+	if self.db then
+		checkbox:SetChecked(self.db.ignoreRestrictions)
+	end
+	checkbox:SetScript('OnClick', function(checkbox)
+		self.db.ignoreRestrictions = checkbox:GetChecked()
+		self:GetTalentFrame():UpdateTreeCurrencyInfo()
+	end)
 end
 
 function TalentViewer:InitDropDown()
