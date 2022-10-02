@@ -354,7 +354,7 @@ do
 	end
 	function TalentViewer_ExportButton_OnClick()
 		local exportString = ImportExport:GetLoadoutExportString();
-		StaticPopup_Show("TalentViewerExportDialog", _, _, exportString);
+		StaticPopup_Show("TalentViewerExportDialog", nil, nil, exportString);
 	end
 
 	function TalentViewer_DFMain_OnLoad()
