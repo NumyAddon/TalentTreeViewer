@@ -13,5 +13,6 @@ libs\load_libs.xml
 
 data.lua
 TalentViewer.lua
+TalentViewerUIMixin.lua
 ImportExport.lua
 TalentViewerUI.xml
