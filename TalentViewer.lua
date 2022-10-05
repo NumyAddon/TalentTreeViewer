@@ -92,12 +92,14 @@ function TalentViewer:ApplyCurrencySpending(treeCurrency)
 end
 
 function TalentViewer:ResetTree()
-	wipe(self.purchasedRanks)
-	wipe(self.selectedEntries)
-	wipe(self.currencySpending)
-	wipe(self:GetTalentFrame().edgeRequirementsCache)
+	wipe(self.purchasedRanks);
+	wipe(self.selectedEntries);
+	wipe(self.currencySpending);
+	wipe(self:GetTalentFrame().edgeRequirementsCache);
+	self:GetTalentFrame().nodesPerGate = nil;
+	self:GetTalentFrame().eligibleNodesPerGate = nil;
 	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
-	TalentViewer_DF.Talents:UpdateClassVisuals()
+	TalentViewer_DF.Talents:UpdateClassVisuals();
 	TalentViewer_DF.Talents:UpdateSpecBackground();
 end
 
