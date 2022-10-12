@@ -69,14 +69,9 @@ local function OnEvent(_, event, ...)
 			if(IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
 		end
 	end
-	if event == 'PLAYER_ENTERING_WORLD' then
-		TalentViewer:OnPlayerEnteringWorld()
-		frame:UnregisterEvent('PLAYER_ENTERING_WORLD')
-	end
 end
 frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
-frame:RegisterEvent('PLAYER_ENTERING_WORLD')
 
 ---@return TalentViewerUIMixin
 function TalentViewer:GetTalentFrame()
@@ -92,15 +87,17 @@ function TalentViewer:ApplyCurrencySpending(treeCurrency)
 end
 
 function TalentViewer:ResetTree()
+	local talentFrame = self:GetTalentFrame()
+	talentFrame.OutdatedWarning:Hide();
 	wipe(self.purchasedRanks);
 	wipe(self.selectedEntries);
 	wipe(self.currencySpending);
-	wipe(self:GetTalentFrame().edgeRequirementsCache);
-	self:GetTalentFrame().nodesPerGate = nil;
-	self:GetTalentFrame().eligibleNodesPerGate = nil;
-	TalentViewer_DF.Talents:SetTalentTreeID(self.treeId, true);
-	TalentViewer_DF.Talents:UpdateClassVisuals();
-	TalentViewer_DF.Talents:UpdateSpecBackground();
+	wipe(talentFrame.edgeRequirementsCache);
+	talentFrame.nodesPerGate = nil;
+	talentFrame.eligibleNodesPerGate = nil;
+	talentFrame:SetTalentTreeID(self.treeId, true);
+	talentFrame:UpdateClassVisuals();
+	talentFrame:UpdateSpecBackground();
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -162,8 +159,7 @@ function TalentViewer:RestoreCurrency(nodeID)
 	end
 end
 
-function TalentViewer:OnPlayerEnteringWorld()
-	if TalentViewer_DF:IsShown() then return end
+function TalentViewer:InitSpecSelection()
 	local specId
 	local _, _, classId = UnitClass('player')
 	local currentSpec = GetSpecialization()
@@ -289,12 +285,22 @@ function TalentViewer:HookIntoBlizzardImport()
 end
 
 function TalentViewer:ToggleTalentView()
+	self:InitFrame()
 	if TalentViewer_DF:IsShown() then
 		TalentViewer_DF:Hide()
 
 		return
 	end
 	TalentViewer_DF:Show()
+end
+
+function TalentViewer:InitFrame()
+	if self.frameInitialized then return end
+	self.frameInitialized = true
+	table.insert(UISpecialFrames, 'TalentViewer_DF')
+	self:InitDropDown()
+	self:InitCheckbox()
+	self:InitSpecSelection()
 end
 
 function TalentViewer:SelectSpec(classId, specId)

@@ -299,6 +299,18 @@
                     <Anchor point="LEFT" relativeKey="$parent.ExportButton" relativePoint="RIGHT" x="14" y="0"/>
                 </Anchors>
             </Button>
+            <Frame frameStrata="HIGH" parentKey="OutdatedWarning" hidden="true">
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <FontString parentKey="Text" inherits="GameFontNormalLargeOutline"
+                                    text="The tree you're viewing is outdated"/>
+                    </Layer>
+                </Layers>
+                <Anchors>
+                    <Anchor point="CENTER" relativeKey="$parent" relativePoint="CENTER"/>
+                </Anchors>
+                <Size x="300" y="50"/>
+            </Frame>
 
             <Button parentKey="UndoButton" inherits="IconButtonTemplate" hidden="true">
                 <KeyValues>
@@ -432,8 +444,5 @@
                 </Anchors>
             </Frame>
         </Frames>
-        <Scripts>
-            <OnLoad function="TalentViewer_DFMain_OnLoad"/>
-        </Scripts>
     </Frame>
 </Ui>

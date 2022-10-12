@@ -127,7 +127,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
 	local function GetNodeInfoCallback(nodeID)
 		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
 		if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID) end
-		if nodeInfo.ID ~= nodeID then return nil end
+		if nodeInfo.ID ~= nodeID then self:ShowOutdatedDataWarning(); return nodeInfo end
 		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
 		local isChoiceNode = #nodeInfo.entryIDs > 1
 		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
@@ -197,6 +197,12 @@ function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
 		return condInfo
 	end
 	return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
+end
+
+function TalentViewerUIMixin:ShowOutdatedDataWarning()
+	if not self.OutdatedWarning:IsShown() then
+		self.OutdatedWarning:Show()
+	end
 end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
@@ -516,19 +522,5 @@ do
 	function TalentViewer_ExportButton_OnClick()
 		local exportString = ImportExport:GetLoadoutExportString();
 		StaticPopup_Show("TalentViewerExportDialog", nil, nil, exportString);
-	end
-
-	function TalentViewer_DFMain_OnLoad()
-		table.insert(UISpecialFrames, 'TalentViewer_DF')
-		TalentViewer:InitDropDown()
-		TalentViewer:InitCheckbox()
-		local specId
-		local _, _, classId = UnitClass('player')
-		local currentSpec = GetSpecialization()
-		if currentSpec then
-			specId, _ = TalentViewer.cache.specIndexToIdMap[classId][currentSpec]
-		end
-		specId, _ = specId or TalentViewer.cache.defaultSpecs[classId]
-		TalentViewer:SelectSpec(classId, specId)
 	end
 end
