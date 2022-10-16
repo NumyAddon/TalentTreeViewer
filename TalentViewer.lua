@@ -30,6 +30,8 @@ local cache = TalentViewer.cache
 local LibDBIcon = LibStub('LibDBIcon-1.0')
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
+--- @type LibUIDropDownMenu
+local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 
 ----------------------
 --- Reorganize data
@@ -330,12 +332,12 @@ end
 
 function TalentViewer:MakeDropDownButton()
 	local mainButton = TalentViewer_DF.Talents.TV_DropDownButton
-	local dropDown = CreateFrame('FRAME', nil, TalentViewer_DF, 'UIDropDownMenuTemplate')
+	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF)
 
 	mainButton = Mixin(mainButton, DropDownToggleButtonMixin)
 	mainButton:OnLoad_Intrinsic()
 	mainButton:SetScript('OnMouseDown', function(self)
-		ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil)
+		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil)
 	end)
 
 	dropDown:Hide()
@@ -408,7 +410,7 @@ function TalentViewer:InitDropDown()
 	end
 
 	local function setValue(_, specId, classId)
-		CloseDropDownMenus()
+		LibDD:CloseDropDownMenus()
 
 		TalentViewer:SelectSpec(classId, specId)
 	end
@@ -418,7 +420,7 @@ function TalentViewer:InitDropDown()
 	end
 
 	self.menuList = self:BuildMenu(setValue, isChecked)
-	EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0)
+	LibDD:EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0)
 end
 
 function TalentViewer:RegisterToBlizzMove()

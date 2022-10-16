@@ -126,8 +126,11 @@ end
 function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
 	local function GetNodeInfoCallback(nodeID)
 		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
-		if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID) end
-		if nodeInfo.ID ~= nodeID then self:ShowOutdatedDataWarning(); return nodeInfo end
+		if not nodeInfo then
+			self:ShowOutdatedDataWarning()
+			return LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+		end
+
 		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
 		local isChoiceNode = #nodeInfo.entryIDs > 1
 		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil

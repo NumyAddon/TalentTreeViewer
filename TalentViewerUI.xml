@@ -303,7 +303,7 @@
                 <Layers>
                     <Layer level="OVERLAY">
                         <FontString parentKey="Text" inherits="GameFontNormalLargeOutline"
-                                    text="The tree you're viewing is outdated"/>
+                                    text="The tree you're viewing is possibly outdated"/>
                     </Layer>
                 </Layers>
                 <Anchors>
