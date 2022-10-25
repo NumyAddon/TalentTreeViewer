@@ -1,5 +1,4 @@
-## Interface: 100000
-# Interface: @toc-version-retail@
+## Interface: @toc-version-retail@
 ## Title: TalentTree Viewer
 ## Notes: View any spec's talent trees from any character
 ## Author: Numy
