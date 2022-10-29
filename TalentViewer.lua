@@ -190,7 +190,7 @@ function TalentViewer:OnInitialize()
 	local dataObject = LibStub('LibDataBroker-1.1'):NewDataObject(
 		name,
 		{
-			type = 'data source',
+			type = 'launcher',
 			text = 'Talent Tree Viewer',
 			icon = 'interface/icons/inv_inscription_talenttome01.blp',
 			OnClick = function()

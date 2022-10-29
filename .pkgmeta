@@ -5,5 +5,7 @@ externals:
     libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
     libs/LibDBIcon-1.0: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
     libs/LibDataBroker-1.1: https://github.com/tekkub/libdatabroker-1-1
-    libs/LibTalentTree-1.0: https://github.com/Numynum/LibTalentTree-1.0
+    libs/LibTalentTree-1.0:
+        url: https://github.com/Numynum/LibTalentTree-1.0
+        curse-slug: libtalenttree
     libs/LibUIDropDownMenu: https://repos.curseforge.com/wow/libuidropdownmenu/trunk/LibUIDropDownMenu
