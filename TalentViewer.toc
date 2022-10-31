@@ -6,9 +6,10 @@
 ## SavedVariables: TalentViewerDB
 ## X-Curse-Project-ID: 631740
 
-libs\load_libs.xml
+#libs\load_libs.xml
 
-data.lua
+#data.lua
 
-TalentViewer.lua
-TalentViewerUI.xml
+#TalentViewer.lua
+#TalentViewerUI.xml
+deprecated.lua
