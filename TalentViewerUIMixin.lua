@@ -4,6 +4,9 @@ local _, ns = ...
 local TalentViewer = ns.TalentViewer
 if not TalentViewer then return end
 
+--- @type TalentViewer_Cache
+local tvCache = TalentViewer.cache
+
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
 
@@ -61,21 +64,25 @@ local parentMixin = ClassTalentTalentsTabMixin
 TalentViewer_ClassTalentTalentsTabMixin = deepCopy(parentMixin)
 
 local TalentViewerUIMixin = TalentViewer_ClassTalentTalentsTabMixin
-local function removeFromMixing(method) TalentViewerUIMixin[method] = function() end end
-removeFromMixing('UpdateConfigButtonsState')
-removeFromMixing('RefreshLoadoutOptions')
-removeFromMixing('InitializeLoadoutDropDown')
-removeFromMixing('GetInspectUnit')
-removeFromMixing('OnEvent')
+local function removeFromMixin(method) TalentViewerUIMixin[method] = function() end end
+removeFromMixin('UpdateConfigButtonsState')
+removeFromMixin('RefreshLoadoutOptions')
+removeFromMixin('InitializeLoadoutDropDown')
+removeFromMixin('GetInspectUnit')
+removeFromMixin('OnEvent')
+removeFromMixin('RefreshConfigID')
 
 function TalentViewerUIMixin:GetConfigID()
-	return C_ClassTalents.GetActiveConfigID()
+	return C_ClassTalents.GetActiveConfigID() or TalentViewer.customConfigID
 end
 function TalentViewerUIMixin:GetClassID()
 	return TalentViewer.selectedClassId
 end
 function TalentViewerUIMixin:GetSpecID()
 	return TalentViewer.selectedSpecId
+end
+function TalentViewerUIMixin:GetTalentTreeID()
+	return TalentViewer.treeId
 end
 function TalentViewerUIMixin:IsInspecting()
 	return false
@@ -185,7 +192,7 @@ end
 
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
 	local function GetCondInfoCallback(condID)
-		local condInfo = C_Traits.GetConditionInfo(C_ClassTalents.GetActiveConfigID(), condID)
+		local condInfo = C_Traits.GetConditionInfo(self:GetConfigID(), condID)
 		if condInfo.isGate then
 			local gates = LibTalentTree:GetGates(self:GetSpecID())
 			for _, gateInfo in pairs(gates) do
@@ -200,6 +207,19 @@ function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
 		return condInfo
 	end
 	return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
+end
+
+function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
+	local function GetEntryInfoCallback(entryID)
+		local entryInfo = C_Traits.GetEntryInfo(self:GetConfigID(), entryID);
+		if not entryInfo then
+			entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
+		end
+		entryInfo.entryCost = {};
+
+		return entryInfo;
+	end
+	return GetOrCreateTableEntryByCallback(self.entryInfoCache, entryID, GetEntryInfoCallback);
 end
 
 function TalentViewerUIMixin:ShowOutdatedDataWarning()
@@ -425,12 +445,11 @@ end
 
 function TalentViewerUIMixin:RefreshCurrencyDisplay()
 	local classCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[1] or nil;
-	local classInfo = self:GetClassInfo();
-	self.ClassCurrencyDisplay:SetPointTypeText(string.upper(classInfo.className));
+	self.ClassCurrencyDisplay:SetPointTypeText(string.upper(tvCache.classNames[self:GetClassID()]));
 	self.ClassCurrencyDisplay:SetAmount(classCurrencyInfo and classCurrencyInfo.quantity or 0);
 
 	local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
-	self.SpecCurrencyDisplay:SetPointTypeText(string.upper(self:GetSpecName()));
+	self.SpecCurrencyDisplay:SetPointTypeText(string.upper(tvCache.specNames[self:GetSpecID()]));
 	self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
 end
 

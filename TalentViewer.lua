@@ -3,30 +3,32 @@ local name, ns = ...
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
 --- @class TalentViewer
-TalentViewer = {
+local TalentViewer = {
 	purchasedRanks = {},
 	selectedEntries = {},
 	currencySpending = {},
-	cache = {
-		classNames = {},
-		classFiles = {},
-		classIconId = {},
-		classSpecs = {},
-		nodes = {},
-		tierLevel = {},
-		specIndexToIdMap = {},
-		specIdToClassIdMap = {},
-		specIconId = {},
-		defaultSpecs = {},
-	}
+	customConfigID = -6869888, -- arbitrary configID which hopefully nobody else will use
 }
---- @type TalentViewer
-local TalentViewer = TalentViewer
+_G.TalentViewer = TalentViewer
 
 ns.ImportExport = {}
 ns.TalentViewer = TalentViewer
 
-local cache = TalentViewer.cache
+--- @class TalentViewer_Cache
+local cache = {
+	classNames = {},
+	classFiles = {},
+	classIconId = {},
+	classSpecs = {},
+	nodes = {},
+	tierLevel = {},
+	specNames = {},
+	specIndexToIdMap = {},
+	specIdToClassIdMap = {},
+	specIconId = {},
+	defaultSpecs = {},
+}
+TalentViewer.cache = cache
 local LibDBIcon = LibStub('LibDBIcon-1.0')
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
@@ -52,6 +54,7 @@ do
 		if cache.classNames[specInfo.classId] then
 			local specName = select(2, GetSpecializationInfoForSpecID(specInfo.specId))
 			if specName ~= '' then
+				cache.specNames[specInfo.specId] = specName
 				cache.classSpecs[specInfo.classId][specInfo.specId] = specName
 				cache.specIndexToIdMap[specInfo.classId][specInfo.index + 1] = specInfo.specId
 				cache.specIconId[specInfo.specId] = specInfo.specIconId
@@ -144,7 +147,7 @@ function TalentViewer:SetSelection(nodeID, entryID)
 end
 
 function TalentViewer:ReduceCurrency(nodeID)
-	local costInfo = C_Traits.GetNodeCost(C_ClassTalents.GetActiveConfigID(), nodeID)
+	local costInfo = C_Traits.GetNodeCost(self:GetTalentFrame():GetConfigID(), nodeID)
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
 			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount
@@ -153,7 +156,7 @@ function TalentViewer:ReduceCurrency(nodeID)
 end
 
 function TalentViewer:RestoreCurrency(nodeID)
-	local costInfo = C_Traits.GetNodeCost(C_ClassTalents.GetActiveConfigID(), nodeID)
+	local costInfo = C_Traits.GetNodeCost(self:GetTalentFrame():GetConfigID(), nodeID)
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
 			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount
