@@ -7,7 +7,6 @@ local TalentViewer = {
 	purchasedRanks = {},
 	selectedEntries = {},
 	currencySpending = {},
-	customConfigID = -6869888, -- arbitrary configID which hopefully nobody else will use
 }
 _G.TalentViewer = TalentViewer
 
@@ -147,7 +146,7 @@ function TalentViewer:SetSelection(nodeID, entryID)
 end
 
 function TalentViewer:ReduceCurrency(nodeID)
-	local costInfo = C_Traits.GetNodeCost(self:GetTalentFrame():GetConfigID(), nodeID)
+	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID)
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
 			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount
@@ -156,7 +155,7 @@ function TalentViewer:ReduceCurrency(nodeID)
 end
 
 function TalentViewer:RestoreCurrency(nodeID)
-	local costInfo = C_Traits.GetNodeCost(self:GetTalentFrame():GetConfigID(), nodeID)
+	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID)
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
 			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount

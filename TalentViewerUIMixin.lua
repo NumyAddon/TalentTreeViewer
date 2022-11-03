@@ -73,7 +73,9 @@ removeFromMixin('OnEvent')
 removeFromMixin('RefreshConfigID')
 
 function TalentViewerUIMixin:GetConfigID()
-	return C_ClassTalents.GetActiveConfigID() or TalentViewer.customConfigID
+	-- if nil, then we fully depend on LibTalentTree to provide all required data
+	-- it will be nil if the player hasn't selected a spec yet (e.g. isn't level 10 yet)
+	return C_ClassTalents.GetActiveConfigID() or nil
 end
 function TalentViewerUIMixin:GetClassID()
 	return TalentViewer.selectedClassId
@@ -87,6 +89,16 @@ end
 function TalentViewerUIMixin:IsInspecting()
 	return false
 end
+
+function TalentViewerUIMixin:UpdateTreeInfo(skipButtonUpdates)
+	self.talentTreeInfo = {}; --self:GetConfigID() and C_Traits.GetTreeInfo(self:GetConfigID(), self:GetTalentTreeID()) or {};
+	self:UpdateTreeCurrencyInfo(skipButtonUpdates);
+
+	if not skipButtonUpdates then
+		self:RefreshGates();
+	end
+end
+
 function TalentViewerUIMixin:MarkNodeInfoCacheDirty(nodeID)
 	self.nodeInfoCache[nodeID] = nil
 	parentMixin.MarkNodeInfoCacheDirty(self, nodeID)
@@ -192,17 +204,22 @@ end
 
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
 	local function GetCondInfoCallback(condID)
-		local condInfo = C_Traits.GetConditionInfo(self:GetConfigID(), condID)
-		if condInfo.isGate then
-			local gates = LibTalentTree:GetGates(self:GetSpecID())
-			for _, gateInfo in pairs(gates) do
-				if gateInfo.conditionID == condID then
-					condInfo.spentAmountRequired = gateInfo.spentAmountRequired
-					break
-				end
+		local condInfo = {
+			condID = condID,
+			isAlwaysMet = false,
+			isMet = false,
+			isGate = false,
+		}
+
+		local gates = LibTalentTree:GetGates(TalentViewer.selectedSpecId);
+		for _, gateInfo in pairs(gates) do
+			if gateInfo.conditionID == condID then
+				condInfo.isGate = true;
+				condInfo.traitCurrencyID = gateInfo.traitCurrencyID;
+				condInfo.spentAmountRequired = gateInfo.spentAmountRequired - (TalentViewer.currencySpending[gateInfo.traitCurrencyID] or 0);
+				condInfo.isMet = condInfo.spentAmountRequired <= 0
+				break;
 			end
-			condInfo.spentAmountRequired = condInfo.spentAmountRequired - (TalentViewer.currencySpending[condInfo.traitCurrencyID] or 0)
-			condInfo.isMet = condInfo.spentAmountRequired <= 0
 		end
 		return condInfo
 	end
@@ -211,15 +228,34 @@ end
 
 function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
 	local function GetEntryInfoCallback(entryID)
-		local entryInfo = C_Traits.GetEntryInfo(self:GetConfigID(), entryID);
-		if not entryInfo then
-			entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
-		end
+		local entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
 		entryInfo.entryCost = {};
 
 		return entryInfo;
 	end
 	return GetOrCreateTableEntryByCallback(self.entryInfoCache, entryID, GetEntryInfoCallback);
+end
+
+function TalentViewerUIMixin:GetNodeCost(nodeID)
+	local function GetNodeCostCallback(nodeID)
+		local treeID = self:GetTalentTreeID();
+		local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
+		local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, nodeID);
+		local currencyID;
+		if nodeInfo.isClassNode then
+			currencyID = currencyInfo[1].traitCurrencyID;
+		else
+			currencyID = currencyInfo[2].traitCurrencyID;
+		end
+
+		return {
+			{
+				ID = currencyID,
+				amount = 1,
+			},
+		};
+	end
+	return GetOrCreateTableEntryByCallback(self.nodeCostCache, nodeID, GetNodeCostCallback);
 end
 
 function TalentViewerUIMixin:ShowOutdatedDataWarning()
@@ -341,10 +377,39 @@ function TalentViewerUIMixin:RefreshGates()
 	end
 end
 
-function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
-	self:ProcessGateMandatedRefunds()
+function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
+	local function GetTreeCurrencyInfoCallback(specID)
+		local treeCurrencyInfo = {};
+		local gates = LibTalentTree:GetGates(specID);
+		local treeID = LibTalentTree:GetClassTreeId(tvCache.specIdToClassIdMap[specID]);
+		for _, gate in ipairs(gates) do
+			local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, gate.topLeftNodeID);
+			if nodeInfo.isClassNode then
+				treeCurrencyInfo[1] = {
+					maxQuantity = MAX_LEVEL_CLASS_CURRENCY_CAP,
+					quantity = MAX_LEVEL_CLASS_CURRENCY_CAP,
+					spent = 0,
+					traitCurrencyID = gate.traitCurrencyID,
+				};
+			else
+				treeCurrencyInfo[2] = {
+					maxQuantity = MAX_LEVEL_SPEC_CURRENCY_CAP,
+					quantity = MAX_LEVEL_SPEC_CURRENCY_CAP,
+					spent = 0,
+					traitCurrencyID = gate.traitCurrencyID
+				};
+			end
+		end
 
-	self.treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(self:GetConfigID(), self:GetTalentTreeID(), self.excludeStagedChangesForCurrencies);
+		return treeCurrencyInfo;
+	end
+	return GetOrCreateTableEntryByCallback(self.treeCurrencyInfoCache, specID, GetTreeCurrencyInfoCallback);
+end
+
+function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
+	self:ProcessGateMandatedRefunds();
+
+	self.treeCurrencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
 
 	self.treeCurrencyInfoMap = {};
 	for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
@@ -454,9 +519,11 @@ function TalentViewerUIMixin:RefreshCurrencyDisplay()
 end
 
 function TalentViewerUIMixin:OnLoad()
-	parentMixin.OnLoad(self)
+	parentMixin.OnLoad(self);
 
-	self.edgeRequirementsCache = {}
+	self.edgeRequirementsCache = {};
+	self.nodeCostCache = {};
+	self.treeCurrencyInfoCache = {};
 
 	local setAmountOverride = function(self, amount)
 		local requiredLevel = self.isClassCurrency and 8 or 9;

@@ -12,7 +12,6 @@ libs\load_libs.xml
 
 data.lua
 TalentViewer.lua
-C_TraitsOverrides.lua
 TalentViewerUIMixin.lua
 ImportExport.lua
 TalentViewerUI.xml
