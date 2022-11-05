@@ -28,7 +28,6 @@ local cache = {
 	defaultSpecs = {},
 }
 TalentViewer.cache = cache
-local LibDBIcon = LibStub('LibDBIcon-1.0')
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
 --- @type LibUIDropDownMenu
@@ -69,13 +68,16 @@ local function OnEvent(_, event, ...)
 		local addonName = ...
 		if addonName == name then
 			TalentViewer:OnInitialize()
-			if(IsAddOnLoaded('BlizzMove')) then TalentViewer:RegisterToBlizzMove() end
 			if(IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
 		end
 	end
 end
 frame:HookScript('OnEvent', OnEvent)
 frame:RegisterEvent('ADDON_LOADED')
+
+-----------------------------
+--- Talent Tree Utilities ---
+-----------------------------
 
 ---@return TalentViewerUIMixin
 function TalentViewer:GetTalentFrame()
@@ -163,6 +165,10 @@ function TalentViewer:RestoreCurrency(nodeID)
 	end
 end
 
+----------------------
+--- UI Interaction ---
+----------------------
+
 function TalentViewer:InitSpecSelection()
 	local specId
 	local _, _, classId = UnitClass('player')
@@ -175,117 +181,23 @@ function TalentViewer:InitSpecSelection()
 end
 
 function TalentViewer:OnInitialize()
-	local defaults = {
-		ldbOptions = { hide = false },
-		ignoreRestrictions = false,
-	}
-
-	TalentTreeViewerDB = TalentTreeViewerDB or {}
 	self.db = TalentTreeViewerDB
-
-	for key, value in pairs(defaults) do
-		if self.db[key] == nil then
-			self.db[key] = value
-		end
-	end
-
-	local dataObject = LibStub('LibDataBroker-1.1'):NewDataObject(
-		name,
-		{
-			type = 'launcher',
-			text = 'Talent Tree Viewer',
-			icon = 'interface/icons/inv_inscription_talenttome01.blp',
-			OnClick = function()
-				if IsShiftKeyDown() then
-					TalentViewer.db.ldbOptions.hide = true
-					LibDBIcon:Hide(name)
-					return
-				end
-				TalentViewer:ToggleTalentView()
-			end,
-			OnTooltipShow = function(tooltip)
-				tooltip:AddLine('Talent Tree Viewer')
-				tooltip:AddLine('|cffeda55fClick|r to view the talents for any spec.')
-				tooltip:AddLine('|cffeda55fShift-Click|r to hide this button. (|cffeda55f/tv reset|r to restore)')
-			end,
-		}
-	)
-	LibDBIcon:Register(name, dataObject, self.db.ldbOptions)
 
 	if(self.ignoreRestrictionsCheckbox) then
 		self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions)
 	end
-
-	SLASH_TALENT_VIEWER1 = '/tv'
-	SLASH_TALENT_VIEWER2 = '/talentviewer'
-	SLASH_TALENT_VIEWER3 = '/talenttreeviewer'
-	SlashCmdList['TALENT_VIEWER'] = function(message)
-		if message == 'reset' then
-			wipe(TalentViewer.db.ldbOptions)
-			TalentViewer.db.ldbOptions.hide = false
-			TalentViewer.db.lastSelected = nil
-
-			LibDBIcon:Hide(name)
-			LibDBIcon:Show(name)
-
-			return
-		end
-		TalentViewer:ToggleTalentView()
-	end
-
-	self:AddButtonToBlizzardTalentFrame()
-	self:HookIntoBlizzardImport()
 end
 
-function TalentViewer:AddButtonToBlizzardTalentFrame()
-	local button = CreateFrame('Button', nil, ClassTalentFrame, 'UIPanelButtonTemplate')
-	button:SetText('Talent Viewer')
-	button:SetSize(100, 22)
-	button:SetPoint('TOPRIGHT', ClassTalentFrame, 'TOPRIGHT', -22, 0)
-	button:SetScript('OnClick', function()
-		TalentViewer:ToggleTalentView()
-	end)
-	button:SetFrameStrata('HIGH')
-end
-
-function TalentViewer:HookIntoBlizzardImport()
+function TalentViewer:ImportLoadout(importString)
 	--- @type TalentViewerImportExport
 	local ImportExport = ns.ImportExport
-	local lastError
-	local importString
 
-	StaticPopupDialogs["TalentViewerDefaultImportFailedDialog"] = {
-		text = LOADOUT_ERROR_WRONG_SPEC .. "\n\n" .. "Would you like to open the build in Talent Viewer instead?",
-		button1 = OKAY,
-		button2 = CLOSE,
-		OnAccept = function(dialog)
-			ClassTalentLoadoutImportDialog:OnCancel()
-			ImportExport:ImportLoadout(importString)
-			if TalentViewer_DF:IsShown() then
-				TalentViewer_DF:Raise()
-			else
-				TalentViewer:ToggleTalentView()
-			end
-			dialog:Hide();
-		end,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		preferredIndex = 3,
-	};
-
-	hooksecurefunc(ClassTalentFrame.TalentsTab, 'ImportLoadout', function(self, str)
-		if lastError == LOADOUT_ERROR_WRONG_SPEC then
-			importString = str
-			StaticPopup_Hide('LOADOUT_IMPORT_ERROR_DIALOG')
-
-			StaticPopup_Show('TalentViewerDefaultImportFailedDialog')
-		end
-		lastError = nil
-	end)
-	hooksecurefunc(ClassTalentFrame.TalentsTab, 'ShowImportError', function(self, error)
-		lastError = error
-	end)
+	ImportExport:ImportLoadout(importString)
+	if TalentViewer_DF:IsShown() then
+		TalentViewer_DF:Raise()
+	else
+		TalentViewer:ToggleTalentView()
+	end
 end
 
 function TalentViewer:ToggleTalentView()
@@ -424,24 +336,6 @@ function TalentViewer:InitDropDown()
 
 	self.menuList = self:BuildMenu(setValue, isChecked)
 	LibDD:EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0)
-end
-
-function TalentViewer:RegisterToBlizzMove()
-	if not BlizzMoveAPI then return end
-	BlizzMoveAPI:RegisterAddOnFrames(
-		{
-			[name] = {
-				['TalentViewer_DF'] = {
-					MinVersion = 100000,
-					SubFrames = {
-						['TalentViewer_DF.Talents.ButtonsParent'] = {
-							MinVersion = 100000,
-						},
-					},
-				},
-			},
-		}
-	)
 end
 
 function TalentViewer:ApplyElvUISkin()
