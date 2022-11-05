@@ -242,7 +242,7 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
 		local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
 		local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, nodeID);
 		local currencyID;
-		if nodeInfo.isClassNode then
+		if nodeInfo and nodeInfo.isClassNode then
 			currencyID = currencyInfo[1].traitCurrencyID;
 		else
 			currencyID = currencyInfo[2].traitCurrencyID;
