@@ -194,12 +194,12 @@ function TalentViewer:ImportLoadout(importString)
 	--- @type TalentViewerImportExport
 	local ImportExport = ns.ImportExport
 
-	ImportExport:ImportLoadout(importString)
 	if TalentViewer_DF:IsShown() then
 		TalentViewer_DF:Raise()
 	else
 		TalentViewer:ToggleTalentView()
 	end
+	ImportExport:ImportLoadout(importString)
 end
 
 function TalentViewer:ToggleTalentView()
