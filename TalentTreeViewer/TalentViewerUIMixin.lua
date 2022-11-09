@@ -10,9 +10,6 @@ local tvCache = TalentViewer.cache
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
 
-local MAX_LEVEL_CLASS_CURRENCY_CAP = 31
-local MAX_LEVEL_SPEC_CURRENCY_CAP = 30
-
 local deepCopy, getIncomingNodeEdges, getNodeEdges;
 do
 	function deepCopy(original)
@@ -57,6 +54,29 @@ do
 
 		return GetOrCreateTableEntryByCallback(incomingNodeEdgesCache, nodeID, getIncomingNodeEdgesCallback)
 	end
+end
+
+local TalentButtonMixin = {};
+function TalentButtonMixin:OnClick(button)
+	EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
+
+	if button == "LeftButton" and self:CanPurchaseRank() then
+		self:PurchaseRank();
+	elseif button == "RightButton" and self:CanRefundRank() then
+		self:RefundRank();
+	end
+end
+function TalentButtonMixin:PurchaseRank()
+	--- @type TalentViewerUIMixin
+	local talentFrame = self.talentFrame;
+	self:PlaySelectSound();
+	talentFrame:PurchaseRank(self:GetNodeID());
+end
+function TalentButtonMixin:RefundRank()
+	--- @type TalentViewerUIMixin
+	local talentFrame = self.talentFrame;
+	self:PlayDeselectSound();
+	talentFrame:RefundRank(self:GetNodeID());
 end
 
 local parentMixin = ClassTalentTalentsTabMixin
@@ -281,49 +301,34 @@ function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
 end
 
 function TalentViewerUIMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
-	local talentFrame = self
 	local talentButton = parentMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
-	function talentButton:OnClick(button)
-		EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
-
-		if button == "LeftButton" and self:CanPurchaseRank() then
-			self:PurchaseRank();
-		elseif button == "RightButton" and self:CanRefundRank() then
-			self:RefundRank();
-		end
-	end
-
-	function talentButton:PurchaseRank()
-		self:PlaySelectSound();
-		TalentViewer:PurchaseRank(self:GetNodeID());
-		talentFrame:MarkEdgeRequirementCacheDirty(self:GetNodeID());
-		talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID());
-		talentFrame:UpdateTreeCurrencyInfo();
-		talentFrame:UpdateEdgeSiblings(self:GetNodeID());
-	end
-
-	function talentButton:RefundRank()
-		self:PlayDeselectSound();
-		TalentViewer:RefundRank(self:GetNodeID());
-		talentFrame:MarkEdgeRequirementCacheDirty(self:GetNodeID());
-		talentFrame:MarkNodeInfoCacheDirty(self:GetNodeID());
-		talentFrame:UpdateTreeCurrencyInfo();
-		talentFrame:UpdateEdgeSiblings(self:GetNodeID());
-	end
+	talentButton.talentFrame = self
+	Mixin(talentButton, TalentButtonMixin)
 
 	return talentButton
 end
 
 function TalentViewerUIMixin:SetSelection(nodeID, entryID)
 	TalentViewer:SetSelection(nodeID, entryID);
-	self:MarkEdgeRequirementCacheDirty(nodeID);
-	self:MarkNodeInfoCacheDirty(nodeID);
-	self:UpdateTreeCurrencyInfo();
-	self:UpdateEdgeSiblings(nodeID);
+	self:AfterRankChange(nodeID);
+end
+
+function TalentViewerUIMixin:PurchaseRank(nodeID)
+	TalentViewer:PurchaseRank(nodeID);
+	self:AfterRankChange(nodeID);
+end
+
+function TalentViewerUIMixin:RefundRank(nodeID)
+	TalentViewer:RefundRank(nodeID);
+	self:AfterRankChange(nodeID);
 end
 
 function TalentViewerUIMixin:SetRank(nodeID, rank)
 	TalentViewer:SetRank(nodeID, rank);
+	self:AfterRankChange(nodeID);
+end
+
+function TalentViewerUIMixin:AfterRankChange(nodeID)
 	self:MarkEdgeRequirementCacheDirty(nodeID);
 	self:MarkNodeInfoCacheDirty(nodeID);
 	self:UpdateTreeCurrencyInfo();
@@ -386,15 +391,15 @@ function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
 			local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, gate.topLeftNodeID);
 			if nodeInfo.isClassNode then
 				treeCurrencyInfo[1] = {
-					maxQuantity = MAX_LEVEL_CLASS_CURRENCY_CAP,
-					quantity = MAX_LEVEL_CLASS_CURRENCY_CAP,
+					maxQuantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
+					quantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
 					spent = 0,
 					traitCurrencyID = gate.traitCurrencyID,
 				};
 			else
 				treeCurrencyInfo[2] = {
-					maxQuantity = MAX_LEVEL_SPEC_CURRENCY_CAP,
-					quantity = MAX_LEVEL_SPEC_CURRENCY_CAP,
+					maxQuantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
+					quantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
 					spent = 0,
 					traitCurrencyID = gate.traitCurrencyID
 				};
@@ -414,7 +419,7 @@ function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
 	self.treeCurrencyInfoMap = {};
 	for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
 		-- hardcode currency cap to lvl 70 values
-		treeCurrency.maxQuantity = i == 1 and MAX_LEVEL_CLASS_CURRENCY_CAP or MAX_LEVEL_SPEC_CURRENCY_CAP;
+		treeCurrency.maxQuantity = i == 1 and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
 		self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
 	end
 
@@ -527,7 +532,7 @@ function TalentViewerUIMixin:OnLoad()
 
 	local setAmountOverride = function(self, amount)
 		local requiredLevel = self.isClassCurrency and 8 or 9;
-		local spent = (self.isClassCurrency and MAX_LEVEL_CLASS_CURRENCY_CAP or MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
+		local spent = (self.isClassCurrency and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
 		requiredLevel = math.max(10, requiredLevel + (spent * 2));
 
 		local text = string.format('%d (level %d)', amount, requiredLevel);
@@ -545,6 +550,126 @@ function TalentViewerUIMixin:OnLoad()
 	self.ClassCurrencyDisplay.isClassCurrency = true
 	self.SpecCurrencyDisplay.SetAmount = setAmountOverride
 	self.SpecCurrencyDisplay.isClassCurrency = false
+end
+
+-----------------------
+--- Leveling Builds ---
+-----------------------
+function TalentViewerUIMixin:OnUpdate()
+	parentMixin.OnUpdate(self);
+	self:UpdateLevelingBuildHighlights();
+end
+
+function TalentViewerUIMixin:UpdateLevelingBuildHighlights()
+	local wereSelectableGlowsDisabled = false;
+	if self.activeLevelingBuildHighlight then
+		local previousHighlightedButton = self:GetTalentButtonByNodeID(self.activeLevelingBuildHighlight.nodeID);
+		if previousHighlightedButton then
+			previousHighlightedButton:SetGlowing(false);
+		end
+		self.activeLevelingBuildHighlight = nil;
+
+		wereSelectableGlowsDisabled = true;
+	end
+
+	local buildID = self:GetLevelingBuildID();
+	if not buildID then
+		if wereSelectableGlowsDisabled then
+			-- Re-enable selection glows now that leveling build highlight is inactive
+			for button in self:EnumerateAllTalentButtons() do
+				button:SetSelectableGlowDisabled(false);
+			end
+		end
+		return;
+	end
+
+	local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+	if not nodeID then
+		return;
+	end
+
+	local highlightButton = self:GetTalentButtonByNodeID(nodeID);
+	if highlightButton and highlightButton:IsSelectable() then
+		highlightButton:SetGlowing(true);
+
+		self.activeLevelingBuildHighlight = { nodeID = nodeID, entryID = entryID };
+
+		if not wereSelectableGlowsDisabled then
+			-- Disable selection glows since the leveling build highlight is active
+			for button in self:EnumerateAllTalentButtons() do
+				button:SetSelectableGlowDisabled(true);
+			end
+		end
+	end
+end
+
+function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
+	if buildID == ns.starterBuildID then
+		self.starterBuildCache = self.starterBuildCache or {};
+		local specID = self:GetSpecID();
+		if not self.starterBuildCache[specID] then
+			local info = LibTalentTree:GetStarterBuildBySpec(specID);
+			if info then
+				self.starterBuildCache[specID] = info;
+			end
+		end
+
+		return self.starterBuildCache[specID];
+	end
+	if not TalentViewer:GetLevelingBuild(buildID) then return; end
+end
+
+function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
+	local info = self:GetLevelingBuildInfo(buildID);
+	if not info then return; end
+
+	for _, entryInfo in ipairs(info) do
+		local nodeInfo = self:GetAndCacheNodeInfo(entryInfo.nodeID);
+		if nodeInfo.ranksPurchased < entryInfo.numPoints then
+			return entryInfo.nodeID, entryInfo.entryID;
+		end
+	end
+end
+
+function TalentViewerUIMixin:GetHasStarterBuild()
+	return LibTalentTree:GetStarterBuildBySpec(self:GetSpecID()) ~= nil;
+end
+
+function TalentViewerUIMixin:IsLevelingBuildActive()
+	return self.activeLevelingBuildID ~= nil;
+end
+
+function TalentViewerUIMixin:SetLevelingBuildID(buildID)
+	self.activeLevelingBuildID = buildID;
+	self:UpdateLevelingBuildHighlights();
+end
+
+function TalentViewerUIMixin:GetLevelingBuildID()
+	return self.activeLevelingBuildID;
+end
+
+function TalentViewerUIMixin:IsHighlightedStarterBuildEntry(entryID)
+	return self.activeLevelingBuildHighlight and self.activeLevelingBuildHighlight.entryID == entryID;
+end
+
+function TalentViewerUIMixin:ApplyLevelingBuild(level)
+	level = math.max(10, math.min(ns.MAX_LEVEL, level or ns.MAX_LEVEL));
+	local buildID = self:GetLevelingBuildID();
+
+	local backup = TalentViewer.db.ignoreRestrictions
+	TalentViewer.db.ignoreRestrictions = true -- todo - add a proper way to improve performance of bulk changes
+	self:ResetTree();
+	for _ = 10, level do
+		local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+		if not nodeID then break; end
+		if entryID then
+			self:SetSelection(nodeID, entryID);
+		else
+			self:PurchaseRank(nodeID);
+		end
+	end
+	self:UpdateTreeCurrencyInfo();
+	TalentViewer.db.ignoreRestrictions = backup
 end
 
 ----------------------

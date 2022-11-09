@@ -1,3 +1,4 @@
+--- @type TalentViewer_NS
 local name, ns = ...
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
@@ -104,6 +105,7 @@ function TalentViewer:ResetTree()
 	talentFrame:SetTalentTreeID(self.treeId, true);
 	talentFrame:UpdateClassVisuals();
 	talentFrame:UpdateSpecBackground();
+	talentFrame:UpdateLevelingBuildHighlights();
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -237,6 +239,16 @@ function TalentViewer:SelectSpec(classId, specId)
 	))
 
 	self:ResetTree();
+	-- starter builds are not really correct yet :/
+	--self:ApplyLevelingBuild(ns.starterBuildID);
+	--self:SetStarterBuildActive(false);
+	--local totalCurrencySpent = 0
+	--for _, currencySpent in pairs(self.currencySpending) do
+	--	totalCurrencySpent = totalCurrencySpent + currencySpent;
+	--end
+	--if totalCurrencySpent < ns.TOTAL_CURRENCY_CAP then
+	--	self:ResetTree();
+	--end
 end
 
 function TalentViewer:SetPortraitIcon(specId)
@@ -350,3 +362,20 @@ function TalentViewer:ApplyElvUISkin()
 	-- loosely based on ElvUI's talent skinning code
 
 end
+
+-----------------------
+--- Leveling builds ---
+-----------------------
+function TalentViewer:GetLevelingBuild(buildID)
+	return; -- TODO
+end
+
+function TalentViewer:SetStarterBuildActive(active)
+	self:GetTalentFrame():SetLevelingBuildID(active and ns.starterBuildID or nil)
+end
+
+function TalentViewer:ApplyLevelingBuild(buildID, level)
+	self:GetTalentFrame():SetLevelingBuildID(buildID)
+	self:GetTalentFrame():ApplyLevelingBuild(level)
+end
+

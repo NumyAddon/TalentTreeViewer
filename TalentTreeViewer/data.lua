@@ -1,4 +1,11 @@
+--- @class TalentViewer_NS
 local _, ns = ...
+
+ns.starterBuildID = Constants.TraitConsts.STARTER_BUILD_TRAIT_CONFIG_ID
+ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31
+ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30
+ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP
+ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP
 
 ns.data = {}
 ns.data.classes = {

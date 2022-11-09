@@ -10,9 +10,6 @@ local LOADOUT_SERIALIZATION_VERSION = 1;
 
 local getNodeInfo = function(nodeId) return TalentViewer:GetTalentFrame():GetAndCacheNodeInfo(nodeId) end
 
-function ImportExport:GetConfigID()
-    return C_ClassTalents.GetActiveConfigID();
-end
 function ImportExport:GetTreeId()
     return TalentViewer.treeId;
 end
@@ -39,7 +36,7 @@ StaticPopupDialogs["TALENT_VIEWER_LOADOUT_IMPORT_ERROR_DIALOG"] = {
     hideOnEscape = 1,
 };
 
-function ImportExport:WriteLoadoutContent(exportStream, _, treeID)
+function ImportExport:WriteLoadoutContent(exportStream, treeID)
     local treeNodes = C_Traits.GetTreeNodes(treeID);
     for _, treeNodeID in ipairs(treeNodes) do
         local treeNode = getNodeInfo(treeNodeID);
@@ -121,13 +118,11 @@ end
 
 function ImportExport:GetLoadoutExportString()
     local exportStream = ExportUtil.MakeExportDataStream();
-    local configID = self:GetConfigID();
     local currentSpecID = self:GetSpecId();
     local treeId = self:GetTreeId();
 
-
     self:WriteLoadoutHeader(exportStream, LOADOUT_SERIALIZATION_VERSION, currentSpecID);
-    self:WriteLoadoutContent(exportStream, configID, treeId);
+    self:WriteLoadoutContent(exportStream, treeId);
 
     return exportStream:GetExportString();
 end
