@@ -44,11 +44,11 @@ function TVLoader:OnInitialize()
                 icon = 'interface/icons/inv_inscription_talenttome01.blp',
                 OnClick = function()
                     if IsShiftKeyDown() then
-                        TalentViewer.db.ldbOptions.hide = true
+                        self.db.ldbOptions.hide = true
                         LibDBIcon:Hide(name)
                         return
                     end
-                    TVLoader:ToggleTalentView()
+                    self:ToggleTalentView()
                 end,
                 OnTooltipShow = function(tooltip)
                     tooltip:AddLine('Talent Tree Viewer')
