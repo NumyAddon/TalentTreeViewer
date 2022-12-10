@@ -12,71 +12,71 @@ local LibTalentTree = LibStub('LibTalentTree-1.0')
 
 local deepCopy, getIncomingNodeEdges, getNodeEdges;
 do
-	function deepCopy(original)
-		local originalType = type(original);
-		local copy;
-		if (originalType == 'table') then
-			copy = {};
-			for key, value in next, original, nil do
-				copy[deepCopy(key)] = deepCopy(value);
-			end
-			setmetatable(copy, deepCopy(getmetatable(original)));
-		else
-			copy = original;
-		end
+    function deepCopy(original)
+        local originalType = type(original);
+        local copy;
+        if (originalType == 'table') then
+            copy = {};
+            for key, value in next, original, nil do
+                copy[deepCopy(key)] = deepCopy(value);
+            end
+            setmetatable(copy, deepCopy(getmetatable(original)));
+        else
+            copy = original;
+        end
 
-		return copy;
-	end
+        return copy;
+    end
 
-	local emptyTable = {}
-	local nodeEdgesCache = {}
-	function getNodeEdges(nodeID)
-		if not nodeEdgesCache[nodeID] then
-			nodeEdgesCache[nodeID] = LibTalentTree:GetNodeEdges(TalentViewer.treeId, nodeID) or emptyTable
-		end
-		return nodeEdgesCache[nodeID]
-	end
+    local emptyTable = {}
+    local nodeEdgesCache = {}
+    function getNodeEdges(nodeID)
+        if not nodeEdgesCache[nodeID] then
+            nodeEdgesCache[nodeID] = LibTalentTree:GetNodeEdges(TalentViewer.treeId, nodeID) or emptyTable
+        end
+        return nodeEdgesCache[nodeID]
+    end
 
-	local incomingNodeEdgesCache = {}
-	function getIncomingNodeEdges(nodeID)
-		local function getIncomingNodeEdgesCallback(nodeID)
-			local incomingEdges = {}
-			for _, treeNodeId in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
-				local edges = getNodeEdges(treeNodeId)
-				for _, edge in ipairs(edges) do
-					if edge.targetNode == nodeID then
-						table.insert(incomingEdges, treeNodeId)
-					end
-				end
-			end
-			return incomingEdges
-		end
+    local incomingNodeEdgesCache = {}
+    function getIncomingNodeEdges(nodeID)
+        local function getIncomingNodeEdgesCallback(nodeID)
+            local incomingEdges = {}
+            for _, treeNodeId in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
+                local edges = getNodeEdges(treeNodeId)
+                for _, edge in ipairs(edges) do
+                    if edge.targetNode == nodeID then
+                        table.insert(incomingEdges, treeNodeId)
+                    end
+                end
+            end
+            return incomingEdges
+        end
 
-		return GetOrCreateTableEntryByCallback(incomingNodeEdgesCache, nodeID, getIncomingNodeEdgesCallback)
-	end
+        return GetOrCreateTableEntryByCallback(incomingNodeEdgesCache, nodeID, getIncomingNodeEdgesCallback)
+    end
 end
 
 local TalentButtonMixin = {};
 function TalentButtonMixin:OnClick(button)
-	EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
+    EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
 
-	if button == "LeftButton" and self:CanPurchaseRank() then
-		self:PurchaseRank();
-	elseif button == "RightButton" and self:CanRefundRank() then
-		self:RefundRank();
-	end
+    if button == "LeftButton" and self:CanPurchaseRank() then
+        self:PurchaseRank();
+    elseif button == "RightButton" and self:CanRefundRank() then
+        self:RefundRank();
+    end
 end
 function TalentButtonMixin:PurchaseRank()
-	--- @type TalentViewerUIMixin
-	local talentFrame = self.talentFrame;
-	self:PlaySelectSound();
-	talentFrame:PurchaseRank(self:GetNodeID());
+    --- @type TalentViewerUIMixin
+    local talentFrame = self.talentFrame;
+    self:PlaySelectSound();
+    talentFrame:PurchaseRank(self:GetNodeID());
 end
 function TalentButtonMixin:RefundRank()
-	--- @type TalentViewerUIMixin
-	local talentFrame = self.talentFrame;
-	self:PlayDeselectSound();
-	talentFrame:RefundRank(self:GetNodeID());
+    --- @type TalentViewerUIMixin
+    local talentFrame = self.talentFrame;
+    self:PlayDeselectSound();
+    talentFrame:RefundRank(self:GetNodeID());
 end
 
 local parentMixin = ClassTalentTalentsTabMixin
@@ -92,649 +92,653 @@ removeFromMixin('GetInspectUnit')
 removeFromMixin('OnEvent')
 removeFromMixin('RefreshConfigID')
 
+function TalentViewerUIMixin:IsLocked()
+    return false, ''
+end
+
 function TalentViewerUIMixin:GetConfigID()
-	-- if nil, then we fully depend on LibTalentTree to provide all required data
-	-- it will be nil if the player hasn't selected a spec yet (e.g. isn't level 10 yet)
-	return C_ClassTalents.GetActiveConfigID() or nil
+    -- if nil, then we fully depend on LibTalentTree to provide all required data
+    -- it will be nil if the player hasn't selected a spec yet (e.g. isn't level 10 yet)
+    return C_ClassTalents.GetActiveConfigID() or nil
 end
 function TalentViewerUIMixin:GetClassID()
-	return TalentViewer.selectedClassId
+    return TalentViewer.selectedClassId
 end
 function TalentViewerUIMixin:GetSpecID()
-	return TalentViewer.selectedSpecId
+    return TalentViewer.selectedSpecId
 end
 function TalentViewerUIMixin:GetTalentTreeID()
-	return TalentViewer.treeId
+    return TalentViewer.treeId
 end
 function TalentViewerUIMixin:IsInspecting()
-	return false
+    return false
 end
 
 function TalentViewerUIMixin:UpdateTreeInfo(skipButtonUpdates)
-	self.talentTreeInfo = {}; --self:GetConfigID() and C_Traits.GetTreeInfo(self:GetConfigID(), self:GetTalentTreeID()) or {};
-	self:UpdateTreeCurrencyInfo(skipButtonUpdates);
+    self.talentTreeInfo = {}; --self:GetConfigID() and C_Traits.GetTreeInfo(self:GetConfigID(), self:GetTalentTreeID()) or {};
+    self:UpdateTreeCurrencyInfo(skipButtonUpdates);
 
-	if not skipButtonUpdates then
-		self:RefreshGates();
-	end
+    if not skipButtonUpdates then
+        self:RefreshGates();
+    end
 end
 
 function TalentViewerUIMixin:MarkNodeInfoCacheDirty(nodeID)
-	self.nodeInfoCache[nodeID] = nil
-	parentMixin.MarkNodeInfoCacheDirty(self, nodeID)
+    self.nodeInfoCache[nodeID] = nil
+    parentMixin.MarkNodeInfoCacheDirty(self, nodeID)
 end
 
 function TalentViewerUIMixin:MarkEdgeRequirementCacheDirty(nodeID)
-	local edges = getNodeEdges(nodeID)
-	for _, edge in ipairs(edges) do
-		self.edgeRequirementsCache[edge.targetNode] = nil
-	end
+    local edges = getNodeEdges(nodeID)
+    for _, edge in ipairs(edges) do
+        self.edgeRequirementsCache[edge.targetNode] = nil
+    end
 end
 
 function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
-	local function EdgeRequirementCallback(nodeID)
-		local incomingEdges = getIncomingNodeEdges(nodeID)
-		local hasActiveIncomingEdge = false
-		local hasInactiveIncomingEdge = false
-		for _, incomingNodeId in ipairs(incomingEdges) do
-			local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, incomingNodeId)
-			if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, incomingNodeId) end
-			if nodeInfo and LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, incomingNodeId) then
-				local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, incomingNodeId)
-				local isChoiceNode = #nodeInfo.entryIDs > 1
-				local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(incomingNodeId) or nil
-				local activeRank = isGranted
-						and nodeInfo.maxRanks
-						or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(incomingNodeId))
-				local isEdgeActive = activeRank == nodeInfo.maxRanks
+    local function EdgeRequirementCallback(nodeID)
+        local incomingEdges = getIncomingNodeEdges(nodeID)
+        local hasActiveIncomingEdge = false
+        local hasInactiveIncomingEdge = false
+        for _, incomingNodeId in ipairs(incomingEdges) do
+            local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, incomingNodeId)
+            if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, incomingNodeId) end
+            if nodeInfo and LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, incomingNodeId) then
+                local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, incomingNodeId)
+                local isChoiceNode = #nodeInfo.entryIDs > 1
+                local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(incomingNodeId) or nil
+                local activeRank = isGranted
+                        and nodeInfo.maxRanks
+                        or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(incomingNodeId))
+                local isEdgeActive = activeRank == nodeInfo.maxRanks
 
-				if not isEdgeActive then
-					hasInactiveIncomingEdge = true
-				else
-					hasActiveIncomingEdge = true
-				end
-			end
-		end
+                if not isEdgeActive then
+                    hasInactiveIncomingEdge = true
+                else
+                    hasActiveIncomingEdge = true
+                end
+            end
+        end
 
-		return not hasInactiveIncomingEdge or hasActiveIncomingEdge
-	end
+        return not hasInactiveIncomingEdge or hasActiveIncomingEdge
+    end
 
-	return GetOrCreateTableEntryByCallback(self.edgeRequirementsCache, nodeID, EdgeRequirementCallback)
+    return GetOrCreateTableEntryByCallback(self.edgeRequirementsCache, nodeID, EdgeRequirementCallback)
 end
 
 function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
-	local function GetNodeInfoCallback(nodeID)
-		local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
-		if not nodeInfo then
-			self:ShowOutdatedDataWarning()
-			return LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
-		end
+    local function GetNodeInfoCallback(nodeID)
+        local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+        if not nodeInfo then
+            self:ShowOutdatedDataWarning()
+            return LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+        end
 
-		local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
-		local isChoiceNode = #nodeInfo.entryIDs > 1
-		local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
+        local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
+        local isChoiceNode = #nodeInfo.entryIDs > 1
+        local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
 
-		local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID)
-		local meetsGateRequirements = true
-		if not TalentViewer.db.ignoreRestrictions then
-			for _, conditionId in ipairs(nodeInfo.conditionIDs) do
-				local condInfo = self:GetAndCacheCondInfo(conditionId)
-				if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
-			end
-		end
+        local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID)
+        local meetsGateRequirements = true
+        if not TalentViewer.db.ignoreRestrictions then
+            for _, conditionId in ipairs(nodeInfo.conditionIDs) do
+                local condInfo = self:GetAndCacheCondInfo(conditionId)
+                if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
+            end
+        end
 
-		local isAvailable = meetsGateRequirements
+        local isAvailable = meetsGateRequirements
 
-		nodeInfo.activeRank = isGranted
-			and nodeInfo.maxRanks
-			or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
-		nodeInfo.currentRank = nodeInfo.activeRank
-		nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
-		nodeInfo.isAvailable = isAvailable
-		nodeInfo.canPurchaseRank = isAvailable and meetsEdgeRequirements and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
-		nodeInfo.canRefundRank = not isGranted
-		nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
+        nodeInfo.activeRank = isGranted
+                and nodeInfo.maxRanks
+                or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
+        nodeInfo.currentRank = nodeInfo.activeRank
+        nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
+        nodeInfo.isAvailable = isAvailable
+        nodeInfo.canPurchaseRank = isAvailable and meetsEdgeRequirements and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
+        nodeInfo.canRefundRank = not isGranted
+        nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
 
-		for _, edge in ipairs(nodeInfo.visibleEdges) do
-			edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
-		end
+        for _, edge in ipairs(nodeInfo.visibleEdges) do
+            edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
+        end
 
-		if #nodeInfo.entryIDs > 1 then
-			local entryIndex
-			for i, entryId in ipairs(nodeInfo.entryIDs) do
-				if entryId == selectedEntryId then
-					entryIndex = i
-					break
-				end
-			end
-			nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or nil
-		else
-			nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
-		end
-		if not isChoiceNode and nodeInfo.activeRank ~= nodeInfo.maxRanks then
-			nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1 }
-		end
+        if #nodeInfo.entryIDs > 1 then
+            local entryIndex
+            for i, entryId in ipairs(nodeInfo.entryIDs) do
+                if entryId == selectedEntryId then
+                    entryIndex = i
+                    break
+                end
+            end
+            nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or nil
+        else
+            nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
+        end
+        if not isChoiceNode and nodeInfo.activeRank ~= nodeInfo.maxRanks then
+            nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1 }
+        end
 
-		nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
+        nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
 
-		return nodeInfo
-	end
-	return GetOrCreateTableEntryByCallback(self.nodeInfoCache, nodeID, GetNodeInfoCallback);
+        return nodeInfo
+    end
+    return GetOrCreateTableEntryByCallback(self.nodeInfoCache, nodeID, GetNodeInfoCallback);
 end
 
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
-	local function GetCondInfoCallback(condID)
-		local condInfo = {
-			condID = condID,
-			isAlwaysMet = false,
-			isMet = false,
-			isGate = false,
-		}
+    local function GetCondInfoCallback(condID)
+        local condInfo = {
+            condID = condID,
+            isAlwaysMet = false,
+            isMet = false,
+            isGate = false,
+        }
 
-		local gates = LibTalentTree:GetGates(TalentViewer.selectedSpecId);
-		for _, gateInfo in pairs(gates) do
-			if gateInfo.conditionID == condID then
-				condInfo.isGate = true;
-				condInfo.traitCurrencyID = gateInfo.traitCurrencyID;
-				condInfo.spentAmountRequired = gateInfo.spentAmountRequired - (TalentViewer.currencySpending[gateInfo.traitCurrencyID] or 0);
-				condInfo.isMet = condInfo.spentAmountRequired <= 0
-				break;
-			end
-		end
-		return condInfo
-	end
-	return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
+        local gates = LibTalentTree:GetGates(TalentViewer.selectedSpecId);
+        for _, gateInfo in pairs(gates) do
+            if gateInfo.conditionID == condID then
+                condInfo.isGate = true;
+                condInfo.traitCurrencyID = gateInfo.traitCurrencyID;
+                condInfo.spentAmountRequired = gateInfo.spentAmountRequired - (TalentViewer.currencySpending[gateInfo.traitCurrencyID] or 0);
+                condInfo.isMet = condInfo.spentAmountRequired <= 0
+                break;
+            end
+        end
+        return condInfo
+    end
+    return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
 end
 
 function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
-	local function GetEntryInfoCallback(entryID)
-		local entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
-		entryInfo.entryCost = {};
+    local function GetEntryInfoCallback(entryID)
+        local entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
+        entryInfo.entryCost = {};
 
-		return entryInfo;
-	end
-	return GetOrCreateTableEntryByCallback(self.entryInfoCache, entryID, GetEntryInfoCallback);
+        return entryInfo;
+    end
+    return GetOrCreateTableEntryByCallback(self.entryInfoCache, entryID, GetEntryInfoCallback);
 end
 
 function TalentViewerUIMixin:GetNodeCost(nodeID)
-	local function GetNodeCostCallback(nodeID)
-		local treeID = self:GetTalentTreeID();
-		local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
-		local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, nodeID);
-		local currencyID;
-		if nodeInfo and nodeInfo.isClassNode then
-			currencyID = currencyInfo[1].traitCurrencyID;
-		else
-			currencyID = currencyInfo[2].traitCurrencyID;
-		end
+    local function GetNodeCostCallback(nodeID)
+        local treeID = self:GetTalentTreeID();
+        local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
+        local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, nodeID);
+        local currencyID;
+        if nodeInfo and nodeInfo.isClassNode then
+            currencyID = currencyInfo[1].traitCurrencyID;
+        else
+            currencyID = currencyInfo[2].traitCurrencyID;
+        end
 
-		return {
-			{
-				ID = currencyID,
-				amount = 1,
-			},
-		};
-	end
-	return GetOrCreateTableEntryByCallback(self.nodeCostCache, nodeID, GetNodeCostCallback);
+        return {
+            {
+                ID = currencyID,
+                amount = 1,
+            },
+        };
+    end
+    return GetOrCreateTableEntryByCallback(self.nodeCostCache, nodeID, GetNodeCostCallback);
 end
 
 function TalentViewerUIMixin:ShowOutdatedDataWarning()
-	if not self.OutdatedWarning:IsShown() then
-		self.OutdatedWarning:Show()
-	end
+    if not self.OutdatedWarning:IsShown() then
+        self.OutdatedWarning:Show()
+    end
 end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
-	local backup = TalentViewer.db.ignoreRestrictions
-	TalentViewer.db.ignoreRestrictions = true
-	self:ResetTree()
-	for _, entry in ipairs(loadoutEntryInfo) do
-		if(entry.isChoiceNode) then
-			self:SetSelection(entry.nodeID, entry.selectionEntryID)
-		else
-			self:SetRank(entry.nodeID, entry.ranksPurchased)
-		end
-	end
-	TalentViewer.db.ignoreRestrictions = backup
+    local backup = TalentViewer.db.ignoreRestrictions
+    TalentViewer.db.ignoreRestrictions = true
+    self:ResetTree()
+    for _, entry in ipairs(loadoutEntryInfo) do
+        if(entry.isChoiceNode) then
+            self:SetSelection(entry.nodeID, entry.selectionEntryID)
+        else
+            self:SetRank(entry.nodeID, entry.ranksPurchased)
+        end
+    end
+    TalentViewer.db.ignoreRestrictions = backup
 
-	return true;
+    return true;
 end
 
 function TalentViewerUIMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
-	local talentButton = parentMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
-	talentButton.talentFrame = self
-	Mixin(talentButton, TalentButtonMixin)
+    local talentButton = parentMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction)
+    talentButton.talentFrame = self
+    Mixin(talentButton, TalentButtonMixin)
 
-	return talentButton
+    return talentButton
 end
 
 function TalentViewerUIMixin:SetSelection(nodeID, entryID)
-	TalentViewer:SetSelection(nodeID, entryID);
-	self:AfterRankChange(nodeID);
+    TalentViewer:SetSelection(nodeID, entryID);
+    self:AfterRankChange(nodeID);
 end
 
 function TalentViewerUIMixin:PurchaseRank(nodeID)
-	TalentViewer:PurchaseRank(nodeID);
-	self:AfterRankChange(nodeID);
+    TalentViewer:PurchaseRank(nodeID);
+    self:AfterRankChange(nodeID);
 end
 
 function TalentViewerUIMixin:RefundRank(nodeID)
-	TalentViewer:RefundRank(nodeID);
-	self:AfterRankChange(nodeID);
+    TalentViewer:RefundRank(nodeID);
+    self:AfterRankChange(nodeID);
 end
 
 function TalentViewerUIMixin:SetRank(nodeID, rank)
-	TalentViewer:SetRank(nodeID, rank);
-	self:AfterRankChange(nodeID);
+    TalentViewer:SetRank(nodeID, rank);
+    self:AfterRankChange(nodeID);
 end
 
 function TalentViewerUIMixin:AfterRankChange(nodeID)
-	self:MarkEdgeRequirementCacheDirty(nodeID);
-	self:MarkNodeInfoCacheDirty(nodeID);
-	self:UpdateTreeCurrencyInfo();
-	self:UpdateEdgeSiblings(nodeID);
+    self:MarkEdgeRequirementCacheDirty(nodeID);
+    self:MarkNodeInfoCacheDirty(nodeID);
+    self:UpdateTreeCurrencyInfo();
+    self:UpdateEdgeSiblings(nodeID);
 end
 
 function TalentViewerUIMixin:UpdateEdgeSiblings(nodeID)
-	if TalentViewer.db.ignoreRestrictions then return end
-	local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
-	local edges = nodeInfo.visibleEdges
+    if TalentViewer.db.ignoreRestrictions then return end
+    local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
+    local edges = nodeInfo.visibleEdges
 
-	if not edges or not edges[1] or edges[1].isActive then return end
-	for _, edge in ipairs(edges) do
-		local siblingNodeID = edge.targetNode
-		local siblingNodeInfo = self:GetAndCacheNodeInfo(siblingNodeID)
-		if not siblingNodeInfo.meetsEdgeRequirements and siblingNodeInfo.ranksPurchased > 0 then
-			if #siblingNodeInfo.entryIDs > 1 then
-				self:SetSelection(siblingNodeID, nil)
-			else
-				self:SetRank(siblingNodeID, 0)
-			end
-		end
-	end
+    if not edges or not edges[1] or edges[1].isActive then return end
+    for _, edge in ipairs(edges) do
+        local siblingNodeID = edge.targetNode
+        local siblingNodeInfo = self:GetAndCacheNodeInfo(siblingNodeID)
+        if not siblingNodeInfo.meetsEdgeRequirements and siblingNodeInfo.ranksPurchased > 0 then
+            if #siblingNodeInfo.entryIDs > 1 then
+                self:SetSelection(siblingNodeID, nil)
+            else
+                self:SetRank(siblingNodeID, 0)
+            end
+        end
+    end
 end
 
 function TalentViewerUIMixin:ResetTree()
-	TalentViewer:ResetTree()
+    TalentViewer:ResetTree()
 end
 
 function TalentViewerUIMixin:CanAfford(cost)
-	return parentMixin.CanAfford(self, cost)
+    return parentMixin.CanAfford(self, cost)
 end
 
 function TalentViewerUIMixin:RefreshGates()
-	self.traitCurrencyIDToGate = {};
-	self.gatePool:ReleaseAll();
+    self.traitCurrencyIDToGate = {};
+    self.gatePool:ReleaseAll();
 
-	local gates = LibTalentTree:GetGates(self:GetSpecID());
+    local gates = LibTalentTree:GetGates(self:GetSpecID());
 
-	for _, gateInfo in ipairs(gates) do
-		local firstButton = self:GetTalentButtonByNodeID(gateInfo.topLeftNodeID);
-		local condInfo = self:GetAndCacheCondInfo(gateInfo.conditionID);
-		if firstButton and self:ShouldDisplayGate(firstButton, condInfo) then
-			local gate = self.gatePool:Acquire();
-			gate:Init(self, firstButton, condInfo);
-			self:AnchorGate(gate, firstButton);
-			gate:Show();
+    for _, gateInfo in ipairs(gates) do
+        local firstButton = self:GetTalentButtonByNodeID(gateInfo.topLeftNodeID);
+        local condInfo = self:GetAndCacheCondInfo(gateInfo.conditionID);
+        if firstButton and self:ShouldDisplayGate(firstButton, condInfo) then
+            local gate = self.gatePool:Acquire();
+            gate:Init(self, firstButton, condInfo);
+            self:AnchorGate(gate, firstButton);
+            gate:Show();
 
-			self:OnGateDisplayed(gate, firstButton, condInfo);
-		end
-	end
+            self:OnGateDisplayed(gate, firstButton, condInfo);
+        end
+    end
 end
 
 function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
-	local function GetTreeCurrencyInfoCallback(specID)
-		local treeCurrencyInfo = {};
-		local gates = LibTalentTree:GetGates(specID);
-		local treeID = LibTalentTree:GetClassTreeId(tvCache.specIdToClassIdMap[specID]);
-		for _, gate in ipairs(gates) do
-			local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, gate.topLeftNodeID);
-			if nodeInfo.isClassNode then
-				treeCurrencyInfo[1] = {
-					maxQuantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
-					quantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
-					spent = 0,
-					traitCurrencyID = gate.traitCurrencyID,
-				};
-			else
-				treeCurrencyInfo[2] = {
-					maxQuantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
-					quantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
-					spent = 0,
-					traitCurrencyID = gate.traitCurrencyID
-				};
-			end
-		end
+    local function GetTreeCurrencyInfoCallback(specID)
+        local treeCurrencyInfo = {};
+        local gates = LibTalentTree:GetGates(specID);
+        local treeID = LibTalentTree:GetClassTreeId(tvCache.specIdToClassIdMap[specID]);
+        for _, gate in ipairs(gates) do
+            local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, gate.topLeftNodeID);
+            if nodeInfo.isClassNode then
+                treeCurrencyInfo[1] = {
+                    maxQuantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
+                    quantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
+                    spent = 0,
+                    traitCurrencyID = gate.traitCurrencyID,
+                };
+            else
+                treeCurrencyInfo[2] = {
+                    maxQuantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
+                    quantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
+                    spent = 0,
+                    traitCurrencyID = gate.traitCurrencyID
+                };
+            end
+        end
 
-		return treeCurrencyInfo;
-	end
-	return GetOrCreateTableEntryByCallback(self.treeCurrencyInfoCache, specID, GetTreeCurrencyInfoCallback);
+        return treeCurrencyInfo;
+    end
+    return GetOrCreateTableEntryByCallback(self.treeCurrencyInfoCache, specID, GetTreeCurrencyInfoCallback);
 end
 
 function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
-	self:ProcessGateMandatedRefunds();
+    self:ProcessGateMandatedRefunds();
 
-	self.treeCurrencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
+    self.treeCurrencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
 
-	self.treeCurrencyInfoMap = {};
-	for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
-		-- hardcode currency cap to lvl 70 values
-		treeCurrency.maxQuantity = i == 1 and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
-		self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
-	end
+    self.treeCurrencyInfoMap = {};
+    for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
+        -- hardcode currency cap to lvl 70 values
+        treeCurrency.maxQuantity = i == 1 and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
+        self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
+    end
 
-	self:RefreshCurrencyDisplay();
+    self:RefreshCurrencyDisplay();
 
-	for condID, condInfo in pairs(self.condInfoCache) do
-		if condInfo.isGate then
-			self:MarkCondInfoCacheDirty(condID);
-			self:ForceCondInfoUpdate(condID);
-		end
-	end
+    for condID, condInfo in pairs(self.condInfoCache) do
+        if condInfo.isGate then
+            self:MarkCondInfoCacheDirty(condID);
+            self:ForceCondInfoUpdate(condID);
+        end
+    end
 
-	self:RefreshGates();
+    self:RefreshGates();
 
-	for talentButton in self:EnumerateAllTalentButtons() do
-		self:MarkNodeInfoCacheDirty(talentButton:GetNodeID());
-	end
+    for talentButton in self:EnumerateAllTalentButtons() do
+        self:MarkNodeInfoCacheDirty(talentButton:GetNodeID());
+    end
 end
 
 function TalentViewerUIMixin:ProcessGateMandatedRefunds()
-	if TalentViewer.db.ignoreRestrictions then return end
+    if TalentViewer.db.ignoreRestrictions then return end
 
-	self:UpdateNodeGateMapping()
-	local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate()
-	local gates = LibTalentTree:GetGates(self:GetSpecID());
+    self:UpdateNodeGateMapping()
+    local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate()
+    local gates = LibTalentTree:GetGates(self:GetSpecID());
 
-	for _, gateInfo in ipairs(gates) do
-		local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0
-		if eligibleSpending < gateInfo.spentAmountRequired then
-			for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
-				local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
-				if nodeInfo.ranksPurchased > 0 then
-					if #nodeInfo.entryIDs > 1 then
-						self:SetSelection(nodeID, nil)
-					else
-						self:SetRank(nodeID, 0)
-					end
-				end
-			end
-		end
-	end
+    for _, gateInfo in ipairs(gates) do
+        local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0
+        if eligibleSpending < gateInfo.spentAmountRequired then
+            for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
+                local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
+                if nodeInfo.ranksPurchased > 0 then
+                    if #nodeInfo.entryIDs > 1 then
+                        self:SetSelection(nodeID, nil)
+                    else
+                        self:SetRank(nodeID, 0)
+                    end
+                end
+            end
+        end
+    end
 end
 
 function TalentViewerUIMixin:UpdateNodeGateMapping()
-	if self.eligibleNodesPerGate and self.nodesPerGate then return end
-	self.eligibleNodesPerGate = {}
-	self.nodesPerGate = {}
-	local gates = LibTalentTree:GetGates(self:GetSpecID());
+    if self.eligibleNodesPerGate and self.nodesPerGate then return end
+    self.eligibleNodesPerGate = {}
+    self.nodesPerGate = {}
+    local gates = LibTalentTree:GetGates(self:GetSpecID());
 
-	for _, gateInfo in ipairs(gates) do
-		self.eligibleNodesPerGate[gateInfo.conditionID] = self.eligibleNodesPerGate[gateInfo.conditionID] or {}
-		self.nodesPerGate[gateInfo.conditionID] = self.nodesPerGate[gateInfo.conditionID] or {}
+    for _, gateInfo in ipairs(gates) do
+        self.eligibleNodesPerGate[gateInfo.conditionID] = self.eligibleNodesPerGate[gateInfo.conditionID] or {}
+        self.nodesPerGate[gateInfo.conditionID] = self.nodesPerGate[gateInfo.conditionID] or {}
 
-		for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
-			local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-			local conditionIDs = nodeInfo.conditionIDs;
-			local costInfo = self:GetNodeCost(nodeID);
+        for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
+            local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
+            local conditionIDs = nodeInfo.conditionIDs;
+            local costInfo = self:GetNodeCost(nodeID);
 
-			if costInfo and costInfo[1] and costInfo[1].ID and costInfo[1].ID == gateInfo.traitCurrencyID then
-				local conditionMatches = false;
-				for _, conditionID in ipairs(conditionIDs) do
-					if conditionID == gateInfo.conditionID then
-						conditionMatches = true;
-						break;
-					end
-				end
-				if conditionMatches then
-					table.insert(self.nodesPerGate[gateInfo.conditionID], nodeID)
-				else
-					table.insert(self.eligibleNodesPerGate[gateInfo.conditionID], nodeID)
-				end
-			end
-		end
-	end
+            if costInfo and costInfo[1] and costInfo[1].ID and costInfo[1].ID == gateInfo.traitCurrencyID then
+                local conditionMatches = false;
+                for _, conditionID in ipairs(conditionIDs) do
+                    if conditionID == gateInfo.conditionID then
+                        conditionMatches = true;
+                        break;
+                    end
+                end
+                if conditionMatches then
+                    table.insert(self.nodesPerGate[gateInfo.conditionID], nodeID)
+                else
+                    table.insert(self.eligibleNodesPerGate[gateInfo.conditionID], nodeID)
+                end
+            end
+        end
+    end
 end
 
 function TalentViewerUIMixin:GetEligibleSpendingPerGate()
-	local spendingPerGate = {}
-	for condID, nodeIDs in pairs(self.eligibleNodesPerGate) do
-		spendingPerGate[condID] = 0
-		for _, nodeID in ipairs(nodeIDs) do
-			local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-			local costInfo = self:GetNodeCost(nodeID);
-			local amount = costInfo[1].amount;
-			if nodeInfo.ranksPurchased > 0 then
-				spendingPerGate[condID] = spendingPerGate[condID] + (amount * nodeInfo.ranksPurchased)
-			end
-		end
-	end
+    local spendingPerGate = {}
+    for condID, nodeIDs in pairs(self.eligibleNodesPerGate) do
+        spendingPerGate[condID] = 0
+        for _, nodeID in ipairs(nodeIDs) do
+            local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
+            local costInfo = self:GetNodeCost(nodeID);
+            local amount = costInfo[1].amount;
+            if nodeInfo.ranksPurchased > 0 then
+                spendingPerGate[condID] = spendingPerGate[condID] + (amount * nodeInfo.ranksPurchased)
+            end
+        end
+    end
 
-	return spendingPerGate
+    return spendingPerGate
 end
 
 function TalentViewerUIMixin:RefreshCurrencyDisplay()
-	local classCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[1] or nil;
-	self.ClassCurrencyDisplay:SetPointTypeText(string.upper(tvCache.classNames[self:GetClassID()]));
-	self.ClassCurrencyDisplay:SetAmount(classCurrencyInfo and classCurrencyInfo.quantity or 0);
+    local classCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[1] or nil;
+    self.ClassCurrencyDisplay:SetPointTypeText(string.upper(tvCache.classNames[self:GetClassID()]));
+    self.ClassCurrencyDisplay:SetAmount(classCurrencyInfo and classCurrencyInfo.quantity or 0);
 
-	local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
-	self.SpecCurrencyDisplay:SetPointTypeText(string.upper(tvCache.specNames[self:GetSpecID()]));
-	self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
+    local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
+    self.SpecCurrencyDisplay:SetPointTypeText(string.upper(tvCache.specNames[self:GetSpecID()]));
+    self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
 end
 
 function TalentViewerUIMixin:OnLoad()
-	parentMixin.OnLoad(self);
+    parentMixin.OnLoad(self);
 
-	self.edgeRequirementsCache = {};
-	self.nodeCostCache = {};
-	self.treeCurrencyInfoCache = {};
+    self.edgeRequirementsCache = {};
+    self.nodeCostCache = {};
+    self.treeCurrencyInfoCache = {};
 
-	local setAmountOverride = function(self, amount)
-		local requiredLevel = self.isClassCurrency and 8 or 9;
-		local spent = (self.isClassCurrency and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
-		requiredLevel = math.max(10, requiredLevel + (spent * 2));
+    local setAmountOverride = function(self, amount)
+        local requiredLevel = self.isClassCurrency and 8 or 9;
+        local spent = (self.isClassCurrency and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
+        requiredLevel = math.max(10, requiredLevel + (spent * 2));
 
-		local text = string.format('%d (level %d)', amount, requiredLevel);
+        local text = string.format('%d (level %d)', amount, requiredLevel);
 
-		self.CurrencyAmount:SetText(text);
+        self.CurrencyAmount:SetText(text);
 
-		local enabled = not self:IsInspecting() and (amount > 0);
-		local textColor = enabled and GREEN_FONT_COLOR or GRAY_FONT_COLOR;
-		self.CurrencyAmount:SetTextColor(textColor:GetRGBA());
+        local enabled = not self:IsInspecting() and (amount > 0);
+        local textColor = enabled and GREEN_FONT_COLOR or GRAY_FONT_COLOR;
+        self.CurrencyAmount:SetTextColor(textColor:GetRGBA());
 
-		self:MarkDirty();
-	end
+        self:MarkDirty();
+    end
 
-	self.ClassCurrencyDisplay.SetAmount = setAmountOverride
-	self.ClassCurrencyDisplay.isClassCurrency = true
-	self.SpecCurrencyDisplay.SetAmount = setAmountOverride
-	self.SpecCurrencyDisplay.isClassCurrency = false
+    self.ClassCurrencyDisplay.SetAmount = setAmountOverride
+    self.ClassCurrencyDisplay.isClassCurrency = true
+    self.SpecCurrencyDisplay.SetAmount = setAmountOverride
+    self.SpecCurrencyDisplay.isClassCurrency = false
 end
 
 -----------------------
 --- Leveling Builds ---
 -----------------------
 function TalentViewerUIMixin:OnUpdate()
-	parentMixin.OnUpdate(self);
-	self:UpdateLevelingBuildHighlights();
+    parentMixin.OnUpdate(self);
+    self:UpdateLevelingBuildHighlights();
 end
 
 function TalentViewerUIMixin:UpdateLevelingBuildHighlights()
-	local wereSelectableGlowsDisabled = false;
-	if self.activeLevelingBuildHighlight then
-		local previousHighlightedButton = self:GetTalentButtonByNodeID(self.activeLevelingBuildHighlight.nodeID);
-		if previousHighlightedButton then
-			previousHighlightedButton:SetGlowing(false);
-		end
-		self.activeLevelingBuildHighlight = nil;
+    local wereSelectableGlowsDisabled = false;
+    if self.activeLevelingBuildHighlight then
+        local previousHighlightedButton = self:GetTalentButtonByNodeID(self.activeLevelingBuildHighlight.nodeID);
+        if previousHighlightedButton then
+            previousHighlightedButton:SetGlowing(false);
+        end
+        self.activeLevelingBuildHighlight = nil;
 
-		wereSelectableGlowsDisabled = true;
-	end
+        wereSelectableGlowsDisabled = true;
+    end
 
-	local buildID = self:GetLevelingBuildID();
-	if not buildID then
-		if wereSelectableGlowsDisabled then
-			-- Re-enable selection glows now that leveling build highlight is inactive
-			for button in self:EnumerateAllTalentButtons() do
-				button:SetSelectableGlowDisabled(false);
-			end
-		end
-		return;
-	end
+    local buildID = self:GetLevelingBuildID();
+    if not buildID then
+        if wereSelectableGlowsDisabled then
+            -- Re-enable selection glows now that leveling build highlight is inactive
+            for button in self:EnumerateAllTalentButtons() do
+                button:SetSelectableGlowDisabled(false);
+            end
+        end
+        return;
+    end
 
-	local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
-	if not nodeID then
-		return;
-	end
+    local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+    if not nodeID then
+        return;
+    end
 
-	local highlightButton = self:GetTalentButtonByNodeID(nodeID);
-	if highlightButton and highlightButton:IsSelectable() then
-		highlightButton:SetGlowing(true);
+    local highlightButton = self:GetTalentButtonByNodeID(nodeID);
+    if highlightButton and highlightButton:IsSelectable() then
+        highlightButton:SetGlowing(true);
 
-		self.activeLevelingBuildHighlight = { nodeID = nodeID, entryID = entryID };
+        self.activeLevelingBuildHighlight = { nodeID = nodeID, entryID = entryID };
 
-		if not wereSelectableGlowsDisabled then
-			-- Disable selection glows since the leveling build highlight is active
-			for button in self:EnumerateAllTalentButtons() do
-				button:SetSelectableGlowDisabled(true);
-			end
-		end
-	end
+        if not wereSelectableGlowsDisabled then
+            -- Disable selection glows since the leveling build highlight is active
+            for button in self:EnumerateAllTalentButtons() do
+                button:SetSelectableGlowDisabled(true);
+            end
+        end
+    end
 end
 
 function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
-	if buildID == ns.starterBuildID then
-		self.starterBuildCache = self.starterBuildCache or {};
-		local specID = self:GetSpecID();
-		if not self.starterBuildCache[specID] then
-			local info = LibTalentTree:GetStarterBuildBySpec(specID);
-			if info then
-				self.starterBuildCache[specID] = info;
-			end
-		end
+    if buildID == ns.starterBuildID then
+        self.starterBuildCache = self.starterBuildCache or {};
+        local specID = self:GetSpecID();
+        if not self.starterBuildCache[specID] then
+            local info = LibTalentTree:GetStarterBuildBySpec(specID);
+            if info then
+                self.starterBuildCache[specID] = info;
+            end
+        end
 
-		return self.starterBuildCache[specID];
-	end
-	if not TalentViewer:GetLevelingBuild(buildID) then return; end
+        return self.starterBuildCache[specID];
+    end
+    if not TalentViewer:GetLevelingBuild(buildID) then return; end
 end
 
 function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
-	local info = self:GetLevelingBuildInfo(buildID);
-	if not info then return; end
+    local info = self:GetLevelingBuildInfo(buildID);
+    if not info then return; end
 
-	for _, entryInfo in ipairs(info) do
-		local nodeInfo = self:GetAndCacheNodeInfo(entryInfo.nodeID);
-		if nodeInfo.ranksPurchased < entryInfo.numPoints then
-			return entryInfo.nodeID, entryInfo.entryID;
-		end
-	end
+    for _, entryInfo in ipairs(info) do
+        local nodeInfo = self:GetAndCacheNodeInfo(entryInfo.nodeID);
+        if nodeInfo.ranksPurchased < entryInfo.numPoints then
+            return entryInfo.nodeID, entryInfo.entryID;
+        end
+    end
 end
 
 function TalentViewerUIMixin:GetHasStarterBuild()
-	return LibTalentTree:GetStarterBuildBySpec(self:GetSpecID()) ~= nil;
+    return LibTalentTree:GetStarterBuildBySpec(self:GetSpecID()) ~= nil;
 end
 
 function TalentViewerUIMixin:IsLevelingBuildActive()
-	return self.activeLevelingBuildID ~= nil;
+    return self.activeLevelingBuildID ~= nil;
 end
 
 function TalentViewerUIMixin:SetLevelingBuildID(buildID)
-	self.activeLevelingBuildID = buildID;
-	self:UpdateLevelingBuildHighlights();
+    self.activeLevelingBuildID = buildID;
+    self:UpdateLevelingBuildHighlights();
 end
 
 function TalentViewerUIMixin:GetLevelingBuildID()
-	return self.activeLevelingBuildID;
+    return self.activeLevelingBuildID;
 end
 
 function TalentViewerUIMixin:IsHighlightedStarterBuildEntry(entryID)
-	return self.activeLevelingBuildHighlight and self.activeLevelingBuildHighlight.entryID == entryID;
+    return self.activeLevelingBuildHighlight and self.activeLevelingBuildHighlight.entryID == entryID;
 end
 
 function TalentViewerUIMixin:ApplyLevelingBuild(level)
-	level = math.max(10, math.min(ns.MAX_LEVEL, level or ns.MAX_LEVEL));
-	local buildID = self:GetLevelingBuildID();
+    level = math.max(10, math.min(ns.MAX_LEVEL, level or ns.MAX_LEVEL));
+    local buildID = self:GetLevelingBuildID();
 
-	local backup = TalentViewer.db.ignoreRestrictions
-	TalentViewer.db.ignoreRestrictions = true -- todo - add a proper way to improve performance of bulk changes
-	self:ResetTree();
-	for _ = 10, level do
-		local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
-		if not nodeID then break; end
-		if entryID then
-			self:SetSelection(nodeID, entryID);
-		else
-			self:PurchaseRank(nodeID);
-		end
-	end
-	self:UpdateTreeCurrencyInfo();
-	TalentViewer.db.ignoreRestrictions = backup
+    local backup = TalentViewer.db.ignoreRestrictions
+    TalentViewer.db.ignoreRestrictions = true -- todo - add a proper way to improve performance of bulk changes
+    self:ResetTree();
+    for _ = 10, level do
+        local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+        if not nodeID then break; end
+        if entryID then
+            self:SetSelection(nodeID, entryID);
+        else
+            self:PurchaseRank(nodeID);
+        end
+    end
+    self:UpdateTreeCurrencyInfo();
+    TalentViewer.db.ignoreRestrictions = backup
 end
 
 ----------------------
 --- Script handles
 ----------------------
 do
-	--- @type TalentViewerImportExport
-	local ImportExport = ns.ImportExport
+    --- @type TalentViewerImportExport
+    local ImportExport = ns.ImportExport
 
-	StaticPopupDialogs["TalentViewerExportDialog"] = {
-		text = "CTRL-C to copy",
-		button1 = CLOSE,
-		OnShow = function(dialog, data)
-			local function HidePopup()
-				dialog:Hide();
-			end
-			dialog.editBox:SetScript("OnEscapePressed", HidePopup);
-			dialog.editBox:SetScript("OnEnterPressed", HidePopup);
-			dialog.editBox:SetScript("OnKeyUp", function(_, key)
-				if IsControlKeyDown() and key == "C" then
-					HidePopup();
-				end
-			end);
-			dialog.editBox:SetMaxLetters(0);
-			dialog.editBox:SetText(data);
-			dialog.editBox:HighlightText();
-		end,
-		hasEditBox = true,
-		editBoxWidth = 240,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		preferredIndex = 3,
-	};
-	StaticPopupDialogs["TalentViewerImportDialog"] = {
-		text = "Import loadout",
-		button1 = OKAY,
-		button2 = CLOSE,
-		OnAccept = function(dialog)
-			ImportExport:ImportLoadout(dialog.editBox:GetText());
-			dialog:Hide();
-		end,
-		OnShow = function(dialog)
-			local function HidePopup()
-				dialog:Hide();
-			end
-			local function OnEnter()
-				dialog.button1:Click();
-			end
-			dialog.editBox:SetScript("OnEscapePressed", HidePopup);
-			dialog.editBox:SetScript("OnEnterPressed", OnEnter);
-		end,
-		hasEditBox = true,
-		editBoxWidth = 240,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		preferredIndex = 3,
-	};
+    StaticPopupDialogs["TalentViewerExportDialog"] = {
+        text = "CTRL-C to copy",
+        button1 = CLOSE,
+        OnShow = function(dialog, data)
+            local function HidePopup()
+                dialog:Hide();
+            end
+            dialog.editBox:SetScript("OnEscapePressed", HidePopup);
+            dialog.editBox:SetScript("OnEnterPressed", HidePopup);
+            dialog.editBox:SetScript("OnKeyUp", function(_, key)
+                if IsControlKeyDown() and key == "C" then
+                    HidePopup();
+                end
+            end);
+            dialog.editBox:SetMaxLetters(0);
+            dialog.editBox:SetText(data);
+            dialog.editBox:HighlightText();
+        end,
+        hasEditBox = true,
+        editBoxWidth = 240,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    };
+    StaticPopupDialogs["TalentViewerImportDialog"] = {
+        text = "Import loadout",
+        button1 = OKAY,
+        button2 = CLOSE,
+        OnAccept = function(dialog)
+            ImportExport:ImportLoadout(dialog.editBox:GetText());
+            dialog:Hide();
+        end,
+        OnShow = function(dialog)
+            local function HidePopup()
+                dialog:Hide();
+            end
+            local function OnEnter()
+                dialog.button1:Click();
+            end
+            dialog.editBox:SetScript("OnEscapePressed", HidePopup);
+            dialog.editBox:SetScript("OnEnterPressed", OnEnter);
+        end,
+        hasEditBox = true,
+        editBoxWidth = 240,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    };
 
-	function TalentViewer_ImportButton_OnClick()
-		StaticPopup_Show("TalentViewerImportDialog");
-	end
-	function TalentViewer_ExportButton_OnClick()
-		local exportString = ImportExport:GetLoadoutExportString();
-		StaticPopup_Show("TalentViewerExportDialog", nil, nil, exportString);
-	end
+    function TalentViewer_ImportButton_OnClick()
+        StaticPopup_Show("TalentViewerImportDialog");
+    end
+    function TalentViewer_ExportButton_OnClick()
+        local exportString = ImportExport:GetLoadoutExportString();
+        StaticPopup_Show("TalentViewerExportDialog", nil, nil, exportString);
+    end
 end
