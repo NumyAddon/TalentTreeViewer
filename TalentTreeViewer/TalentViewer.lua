@@ -379,3 +379,36 @@ function TalentViewer:ApplyLevelingBuild(buildID, level)
 	self:GetTalentFrame():ApplyLevelingBuild(level)
 end
 
+-------------------------
+--- Button highlights ---
+-------------------------
+function TalentViewer:SetActionBarHighlights(talentButton, shown)
+	local spellID = talentButton:GetSpellID();
+	if spellID and not talentButton:IsMissingFromActionBar() then
+		self:HandleBlizzardActionButtonHighlights(shown and spellID);
+		self:HandleLibActionButtonHighlights(shown and spellID);
+	end
+end
+
+function TalentViewer:HandleBlizzardActionButtonHighlights(spellID)
+	local ON_BAR_HIGHLIGHT_MARKS = spellID and tInvert(C_ActionBar.FindSpellActionButtons(spellID) or {}) or {};
+	for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+		if ( actionButton.SpellHighlightTexture and actionButton.SpellHighlightAnim ) then
+			SharedActionButton_RefreshSpellHighlight(actionButton, ON_BAR_HIGHLIGHT_MARKS[actionButton.action]);
+		end
+	end
+end
+
+function TalentViewer:HandleLibActionButtonHighlights(spellID)
+	local libName = 'LibActionButton-1.';
+	for mayor, lib in LibStub:IterateLibraries() do
+		if mayor:sub(1, string.len(libName)) == libName then
+			for button in pairs(lib:GetAllButtons()) do
+				if button.SpellHighlightTexture and button.SpellHighlightAnim and button.GetSpellId then
+					local shown = spellID and button:GetSpellId() == spellID;
+					SharedActionButton_RefreshSpellHighlight(button, shown);
+				end
+			end
+		end
+	end
+end

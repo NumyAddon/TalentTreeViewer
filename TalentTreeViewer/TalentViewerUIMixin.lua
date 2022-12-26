@@ -78,6 +78,12 @@ function TalentButtonMixin:RefundRank()
     self:PlayDeselectSound();
     talentFrame:RefundRank(self:GetNodeID());
 end
+function TalentButtonMixin:ShowActionBarHighlights()
+    TalentViewer:SetActionBarHighlights(self, true);
+end
+function TalentButtonMixin:HideActionBarHighlights()
+    TalentViewer:SetActionBarHighlights(self, false);
+end
 
 local parentMixin = ClassTalentTalentsTabMixin
 --- @class TalentViewerUIMixin
@@ -112,6 +118,14 @@ function TalentViewerUIMixin:GetTalentTreeID()
 end
 function TalentViewerUIMixin:IsInspecting()
     return false
+end
+
+function TalentViewerUIMixin:ShowSelections(...)
+    parentMixin.ShowSelections(self, ...)
+    for _, button in ipairs(self.SelectionChoiceFrame.selectionFrameArray) do
+        button.ShowActionBarHighlights = TalentButtonMixin.ShowActionBarHighlights
+        button.HideActionBarHighlights = TalentButtonMixin.HideActionBarHighlights
+    end
 end
 
 function TalentViewerUIMixin:UpdateTreeInfo(skipButtonUpdates)
