@@ -34,6 +34,12 @@ local LibTalentTree = LibStub('LibTalentTree-1.0')
 --- @type LibUIDropDownMenu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 
+local function wipe(table)
+	if table and type(table) == 'table' then
+		_G['wipe'](table)
+	end
+end
+
 ----------------------
 --- Reorganize data
 ----------------------

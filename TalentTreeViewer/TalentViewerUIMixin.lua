@@ -376,6 +376,31 @@ function TalentViewerUIMixin:ResetTree()
     TalentViewer:ResetTree()
 end
 
+function TalentViewerUIMixin:ResetClassTalents()
+    local classTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[1] and self.treeCurrencyInfo[1].traitCurrencyID;
+    self:ResetByCurrencyID(classTraitCurrencyID)
+end
+
+function TalentViewerUIMixin:ResetSpecTalents()
+    local specTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[2] and self.treeCurrencyInfo[2].traitCurrencyID;
+    self:ResetByCurrencyID(specTraitCurrencyID)
+end
+
+function TalentViewerUIMixin:ResetByCurrencyID(currencyID)
+    local backup = TalentViewer.db.ignoreRestrictions
+    TalentViewer.db.ignoreRestrictions = true
+    for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
+        local cost = self:GetNodeCost(nodeID)
+        for _, currencyCost in ipairs(cost) do
+            if currencyCost.ID == currencyID then
+                self:SetRank(nodeID, 0)
+                self:SetSelection(nodeID, nil)
+            end
+        end
+    end
+    TalentViewer.db.ignoreRestrictions = backup
+end
+
 function TalentViewerUIMixin:CanAfford(cost)
     return parentMixin.CanAfford(self, cost)
 end
