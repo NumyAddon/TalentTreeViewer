@@ -217,6 +217,7 @@ function TalentViewer:InitFrame()
 	self.frameInitialized = true
 	UpdateScaleForFit(TalentViewer_DF, 200, 270)
 	table.insert(UISpecialFrames, 'TalentViewer_DF')
+	TalentViewer_DFInset:Hide()
 	self:InitDropDown()
 	self:InitCheckbox()
 	self:InitSpecSelection()
