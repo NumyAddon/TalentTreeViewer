@@ -634,7 +634,7 @@ function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
 
         return self.starterBuildCache[specID];
     end
-    if not TalentViewer:GetLevelingBuild(buildID) then return; end
+    return TalentViewer:GetLevelingBuild(buildID);
 end
 
 function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
