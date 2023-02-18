@@ -267,7 +267,11 @@ end
 function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
     local function GetEntryInfoCallback(entryID)
         local entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
-        entryInfo.entryCost = {};
+        if entryInfo then
+            entryInfo.entryCost = {};
+        else
+            entryInfo = parentMixin.GetAndCacheEntryInfo(self, entryID);
+        end
 
         return entryInfo;
     end
