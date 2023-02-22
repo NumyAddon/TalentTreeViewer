@@ -208,6 +208,13 @@ function TalentViewer:ImportLoadout(importString)
 	ImportExport:ImportLoadout(importString)
 end
 
+function TalentViewer:ExportLoadout()
+	--- @type TalentViewerImportExport
+	local ImportExport = ns.ImportExport
+
+	return ImportExport:GetLoadoutExportString()
+end
+
 function TalentViewer:ToggleTalentView()
 	self:InitFrame()
 	if TalentViewer_DF:IsShown() then
