@@ -199,7 +199,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
             local result = {};
             result.nodeID = treeNode.ID;
             result.ranksPurchased = indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or treeNode.maxRanks;
-            result.selectionEntryID = indexInfo.isChoiceNode and treeNode.entryIDs[indexInfo.choiceNodeSelection] or treeNode.activeEntry.entryID;
+            result.selectionEntryID = indexInfo.isChoiceNode and treeNode.entryIDs[indexInfo.choiceNodeSelection] or (treeNode.activeEntry and treeNode.activeEntry.entryID);
             result.isChoiceNode = indexInfo.isChoiceNode;
             results[count] = result;
             count = count + 1;
