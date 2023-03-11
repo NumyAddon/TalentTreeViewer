@@ -185,7 +185,22 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
         if not nodeInfo then
             self:ShowOutdatedDataWarning()
-            return LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+            nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+            if not nodeInfo then
+                if ViragDevTool_AddData then
+                    ViragDevTool_AddData(
+                        {
+                            nodeID = nodeID,
+                            treeID = TalentViewer.treeId,
+                            specID = self:GetSpecID(),
+                            nodeInfo = nodeInfo,
+                        },
+                        'outdated warning trigger'
+                    )
+                end
+                error('no nodeinfo for nodeID '.. nodeID..' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID())
+            end
+            return nodeInfo;
         end
 
         local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
@@ -300,8 +315,10 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
     return GetOrCreateTableEntryByCallback(self.nodeCostCache, nodeID, GetNodeCostCallback);
 end
 
+local tocversion = select(4, GetBuildInfo());
 function TalentViewerUIMixin:ShowOutdatedDataWarning()
-    if not self.OutdatedWarning:IsShown() then
+    -- as of 10.1.0 LibTalentTree no longer uses stored data, but gets up to date info automagically
+    if tocversion < 100100 and not self.OutdatedWarning:IsShown() then
         self.OutdatedWarning:Show()
     end
 end
