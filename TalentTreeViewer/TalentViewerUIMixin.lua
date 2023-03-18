@@ -186,18 +186,18 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         if not nodeInfo then
             self:ShowOutdatedDataWarning()
             nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+            if ViragDevTool_AddData then
+                ViragDevTool_AddData(
+                    {
+                        nodeID = nodeID,
+                        treeID = TalentViewer.treeId,
+                        specID = self:GetSpecID(),
+                        nodeInfo = nodeInfo,
+                    },
+                    'outdated warning trigger, nodeID ' .. nodeID
+                )
+            end
             if not nodeInfo then
-                if ViragDevTool_AddData then
-                    ViragDevTool_AddData(
-                        {
-                            nodeID = nodeID,
-                            treeID = TalentViewer.treeId,
-                            specID = self:GetSpecID(),
-                            nodeInfo = nodeInfo,
-                        },
-                        'outdated warning trigger'
-                    )
-                end
                 error('no nodeinfo for nodeID '.. nodeID..' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID())
             end
             return nodeInfo;
