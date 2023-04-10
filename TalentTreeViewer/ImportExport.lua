@@ -68,7 +68,7 @@ end
 
 function ImportExport:GetActiveEntryIndex(treeNode)
     for i, entryID in ipairs(treeNode.entryIDs) do
-        if(entryID == treeNode.activeEntry.entryID) then
+        if(treeNode.activeEntry and entryID == treeNode.activeEntry.entryID) then
             return i;
         end
     end
@@ -196,11 +196,18 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
 
         if (indexInfo.isNodeSelected) then
             local treeNode = getNodeInfo(treeNodeID);
+            local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection;
+            local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;
+            if indexInfo.isNodeSelected and isChoiceNode ~= indexInfo.isChoiceNode then
+                -- guard against corrupt import strings
+                print("Import string is corrupt, node type mismatch at nodeID", treeNodeID, ". First option will be selected.");
+                choiceNodeSelection = 1;
+            end
             local result = {};
             result.nodeID = treeNode.ID;
             result.ranksPurchased = indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or treeNode.maxRanks;
-            result.selectionEntryID = indexInfo.isChoiceNode and treeNode.entryIDs[indexInfo.choiceNodeSelection] or (treeNode.activeEntry and treeNode.activeEntry.entryID);
-            result.isChoiceNode = indexInfo.isChoiceNode;
+            result.selectionEntryID = (indexInfo.isNodeSelected and isChoiceNode and treeNode.entryIDs[choiceNodeSelection]) or (treeNode.activeEntry and treeNode.activeEntry.entryID);
+            result.isChoiceNode = isChoiceNode;
             results[count] = result;
             count = count + 1;
         end
