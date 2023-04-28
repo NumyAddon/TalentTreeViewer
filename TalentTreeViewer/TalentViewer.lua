@@ -215,6 +215,33 @@ function TalentViewer:ExportLoadout()
 	return ImportExport:GetLoadoutExportString()
 end
 
+function TalentViewer:LinkToChat()
+	local exportString = self:ExportLoadout()
+	if not exportString then return end
+
+	if not TALENT_BUILD_CHAT_LINK_TEXT then
+		if not ChatEdit_InsertLink(exportString) then
+			ChatFrame_OpenChat(exportString);
+		end
+		return;
+	end
+
+	local talentsTab = self:GetTalentFrame();
+
+	local specName = talentsTab:GetSpecName();
+	local className = talentsTab:GetClassName()
+	local specID = talentsTab:GetSpecID();
+	local classColor = RAID_CLASS_COLORS[select(2, GetClassInfo(talentsTab:GetClassID()))];
+	local level = ns.MAX_LEVEL;
+
+	local linkDisplayText = ("[%s]"):format(TALENT_BUILD_CHAT_LINK_TEXT:format(specName, className));
+	local linkText = LinkUtil.FormatLink("talentbuild", linkDisplayText, specID, level, exportString);
+	local chatLink = classColor:WrapTextInColorCode(linkText);
+	if not ChatEdit_InsertLink(chatLink) then
+		ChatFrame_OpenChat(chatLink);
+	end
+end
+
 function TalentViewer:ToggleTalentView()
 	self:InitFrame()
 	if TalentViewer_DF:IsShown() then

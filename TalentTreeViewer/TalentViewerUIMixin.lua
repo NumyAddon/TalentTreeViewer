@@ -98,6 +98,11 @@ removeFromMixin('GetInspectUnit')
 removeFromMixin('OnEvent')
 removeFromMixin('RefreshConfigID')
 
+--- @return TalentViewer
+function TalentViewerUIMixin:GetTalentViewer()
+    return TalentViewer;
+end
+
 function TalentViewerUIMixin:IsLocked()
     return false, ''
 end
@@ -110,8 +115,19 @@ end
 function TalentViewerUIMixin:GetClassID()
     return TalentViewer.selectedClassId
 end
+function TalentViewerUIMixin:GetClassName()
+    local classID = self:GetClassID()
+    local classInfo = C_CreatureInfo.GetClassInfo(classID)
+
+    return classInfo.className
+end
 function TalentViewerUIMixin:GetSpecID()
     return TalentViewer.selectedSpecId
+end
+function TalentViewerUIMixin:GetSpecName()
+    local specID = self:GetSpecID()
+
+    return select(2, GetSpecializationInfoByID(specID))
 end
 function TalentViewerUIMixin:GetTalentTreeID()
     return TalentViewer.treeId

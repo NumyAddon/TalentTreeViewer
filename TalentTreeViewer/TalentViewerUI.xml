@@ -209,6 +209,18 @@
                     </Layer>
                 </Layers>
             </Button>
+            <Button parentKey="linkButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Post in Chat">
+                <!-- TODO: change to TALENT_FRAME_DROP_DOWN_EXPORT_CHAT_LINK after 10.1 launch -->
+                <Size x="100" y="22"/>
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" x="47" y="5"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        self:GetParent():GetTalentViewer():LinkToChat()
+                    </OnClick>
+                </Scripts>
+            </Button>
 
             <EditBox parentKey="SearchBox" inherits="TalentSearchBoxTemplate" hidden="false">
 				<Size x="184" y="30"/>
