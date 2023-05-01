@@ -2,6 +2,7 @@
 ## Title: TalentTree Viewer (Loader)
 ## Notes: View any spec's talent trees from any character
 ## Author: Numy
+## IconTexture: 982414
 ## Version: @project-version@
 ## SavedVariables: TalentTreeViewerDB
 ## X-Curse-Project-ID: 678279
