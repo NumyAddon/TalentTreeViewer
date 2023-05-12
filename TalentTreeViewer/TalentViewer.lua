@@ -3,6 +3,12 @@ local name, ns = ...
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
+ns.starterBuildID = Constants.TraitConsts.STARTER_BUILD_TRAIT_CONFIG_ID
+ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31
+ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30
+ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP
+ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP
+
 --- @class TalentViewer
 local TalentViewer = {
 	purchasedRanks = {},
@@ -18,7 +24,6 @@ ns.TalentViewer = TalentViewer
 local cache = {
 	classNames = {},
 	classFiles = {},
-	classIconId = {},
 	classSpecs = {},
 	nodes = {},
 	tierLevel = {},
@@ -26,7 +31,6 @@ local cache = {
 	specIndexToIdMap = {},
 	specIdToClassIdMap = {},
 	specIconId = {},
-	defaultSpecs = {},
 }
 TalentViewer.cache = cache
 ---@type LibTalentTree
@@ -41,29 +45,23 @@ local function wipe(table)
 end
 
 ----------------------
---- Reorganize data
+--- Build class / spec cache
 ----------------------
 do
-	cache.specs = ns.data.specs
-	cache.classes = ns.data.classes
-
-	for _, classInfo in pairs(cache.classes) do
-		cache.classNames[classInfo.classId], cache.classFiles[classInfo.classId], _ = GetClassInfo(classInfo.classId)
-		cache.specIndexToIdMap[classInfo.classId] = {}
-		cache.classSpecs[classInfo.classId] = {}
-		cache.defaultSpecs[classInfo.classId] = classInfo.defaultSpecId
-		cache.classIconId[classInfo.classId] = classInfo.iconId
-	end
-
-	for _, specInfo in pairs(cache.specs) do
-		if cache.classNames[specInfo.classId] then
-			local specName = select(2, GetSpecializationInfoForSpecID(specInfo.specId))
+	for classID = 1, GetNumClasses() do
+		local _
+		cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID)
+		cache.specIndexToIdMap[classID] = {}
+		cache.classSpecs[classID] = {}
+		for specIndex = 1, GetNumSpecializationsForClassID(classID) do
+			local specID = GetSpecializationInfoForClassID(classID, specIndex)
+			local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID))
 			if specName ~= '' then
-				cache.specNames[specInfo.specId] = specName
-				cache.classSpecs[specInfo.classId][specInfo.specId] = specName
-				cache.specIndexToIdMap[specInfo.classId][specInfo.index + 1] = specInfo.specId
-				cache.specIconId[specInfo.specId] = specInfo.specIconId
-				cache.specIdToClassIdMap[specInfo.specId] = specInfo.classId
+				cache.specNames[specID] = specName
+				cache.classSpecs[classID][specID] = specName
+				cache.specIndexToIdMap[classID][specIndex] = specID
+				cache.specIconId[specID] = specIcon
+				cache.specIdToClassIdMap[specID] = classID
 			end
 		end
 	end
@@ -180,11 +178,8 @@ end
 function TalentViewer:InitSpecSelection()
 	local specId
 	local _, _, classId = UnitClass('player')
-	local currentSpec = GetSpecialization()
-	if currentSpec then
-		specId, _ = cache.specIndexToIdMap[classId][currentSpec]
-	end
-	specId, _ = specId or cache.defaultSpecs[classId]
+	local currentSpec = GetSpecialization() or 1
+	specId, _ = cache.specIndexToIdMap[classId][currentSpec]
 	TalentViewer:SelectSpec(classId, specId)
 end
 
@@ -333,8 +328,8 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 
 		table.insert(menu, {
 			text = string.format(
-				'|T%d:16|t %s',
-				cache.classIconId[classId],
+				'|Tinterface/icons/classicon_%s:16|t %s',
+				cache.classFiles[classId],
 				cache.classNames[classId]
 			),
 			hasArrow = true,
