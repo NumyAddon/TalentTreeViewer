@@ -13,6 +13,10 @@ declare -A locale_files=(
   ["TalentTreeViewer"]="TalentTreeViewer.lua"
   ["TalentTreeViewer_Loader"]="TalentTreeViewer_Loader.lua"
 )
+declare -A namespace_root=(
+  ["TalentTreeViewer"]="TalentTreeViewer/"
+  ["TalentTreeViewer_Loader"]="TalentTreeViewer_Loader/"
+)
 
 tempfile=$( mktemp )
 trap 'rm -f $tempfile' EXIT
@@ -42,7 +46,7 @@ do_import() {
 echo
 
 for namespace in "${!locale_files[@]}"; do
-  lua .github/scripts/find-locale-strings.lua "$namespace/" "${locale_files[$namespace]}"
+  lua .github/scripts/find-locale-strings.lua "${namespace_root[$namespace]}" "${locale_files[$namespace]}"
   do_import "$namespace" "${locale_files[$namespace]}"
 done
 
