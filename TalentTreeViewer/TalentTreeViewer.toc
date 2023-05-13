@@ -10,6 +10,8 @@
 
 libs\load_libs.xml
 
+locale\locale.xml
+
 TalentViewer.lua
 TalentViewerUIMixin.lua
 ImportExport.lua

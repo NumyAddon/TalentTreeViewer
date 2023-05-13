@@ -1,4 +1,4 @@
-local _, ns = ...
+local name, ns = ...
 
 --- @type TalentViewer
 local TalentViewer = ns.TalentViewer
@@ -9,6 +9,12 @@ local tvCache = TalentViewer.cache
 
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
+
+local L = LibStub('AceLocale-3.0'):GetLocale(name)
+
+do
+    TALENT_TREE_VIEWER_LOCALE_EXPORT = L["Export"];
+end
 
 local deepCopy, getIncomingNodeEdges, getNodeEdges;
 do
@@ -200,10 +206,9 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
     local function GetNodeInfoCallback(nodeID)
         local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
         if not nodeInfo then
-            self:ShowOutdatedDataWarning()
             nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
-            if ViragDevTool_AddData then
-                ViragDevTool_AddData(
+            if DevTool and DevTool.AddData then
+                DevTool:AddData(
                     {
                         nodeID = nodeID,
                         treeID = TalentViewer.treeId,
@@ -329,14 +334,6 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
         };
     end
     return GetOrCreateTableEntryByCallback(self.nodeCostCache, nodeID, GetNodeCostCallback);
-end
-
-local tocversion = select(4, GetBuildInfo());
-function TalentViewerUIMixin:ShowOutdatedDataWarning()
-    -- as of 10.1.0 LibTalentTree no longer uses stored data, but gets up to date info automagically
-    if tocversion < 100100 and not self.OutdatedWarning:IsShown() then
-        self.OutdatedWarning:Show()
-    end
 end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
@@ -615,7 +612,7 @@ function TalentViewerUIMixin:OnLoad()
         local spent = (self.isClassCurrency and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
         requiredLevel = math.max(10, requiredLevel + (spent * 2));
 
-        local text = string.format('%d (level %d)', amount, requiredLevel);
+        local text = string.format(L['%d (level %d)'], amount, requiredLevel);
 
         self.CurrencyAmount:SetText(text);
 
@@ -760,7 +757,7 @@ do
     local ImportExport = ns.ImportExport
 
     StaticPopupDialogs["TalentViewerExportDialog"] = {
-        text = "CTRL-C to copy",
+        text = L["CTRL-C to copy"],
         button1 = CLOSE,
         OnShow = function(dialog, data)
             local function HidePopup()
@@ -785,7 +782,7 @@ do
         preferredIndex = 3,
     };
     StaticPopupDialogs["TalentViewerImportDialog"] = {
-        text = "Import loadout",
+        text = HUD_CLASS_TALENTS_IMPORT_DIALOG_TITLE,
         button1 = OKAY,
         button2 = CLOSE,
         OnAccept = function(dialog)

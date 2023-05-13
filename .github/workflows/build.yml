@@ -17,6 +17,10 @@ jobs:
       - name: Replace toc-versions
         uses: Numynum/ToCVersions@master
 
+      - name: Update Locale
+        if: github.ref == 'refs/heads/master'
+        run: ./.github/scripts/update_translation.sh
+
       - name: Create Retail Package
         uses: BigWigsMods/packager@v2
         env:

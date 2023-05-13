@@ -209,8 +209,7 @@
                     </Layer>
                 </Layers>
             </Button>
-            <Button parentKey="linkButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Post in Chat">
-                <!-- TODO: change to TALENT_FRAME_DROP_DOWN_EXPORT_CHAT_LINK after 10.1 launch -->
+            <Button parentKey="linkButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="TALENT_FRAME_DROP_DOWN_EXPORT_CHAT_LINK">
                 <Size x="100" y="22"/>
                 <Anchors>
                     <Anchor point="BOTTOMLEFT" x="47" y="5"/>
@@ -282,7 +281,7 @@
 					<Anchor point="CENTER" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="0" y="3"/>
 				</Anchors>
 			</Button>
-            <Button parentKey="ImportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Import">
+            <Button parentKey="ImportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="TALENT_FRAME_DROP_DOWN_IMPORT">
                 <Size x="130" y="25"/>
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="-5" y="3"/>
@@ -291,7 +290,7 @@
                     <OnClick function="TalentViewer_ImportButton_OnClick"/>
                 </Scripts>
             </Button>
-            <Button parentKey="ExportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="Export">
+            <Button parentKey="ExportButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="TALENT_TREE_VIEWER_LOCALE_EXPORT">
                 <Size x="130" y="25"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="CENTER" x="5" y="3"/>

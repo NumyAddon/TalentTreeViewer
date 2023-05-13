@@ -5,6 +5,7 @@ if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requ
 --- @class TVLoader
 local TVLoader = {}
 local LibDBIcon = LibStub('LibDBIcon-1.0')
+local L = LibStub('AceLocale-3.0'):GetLocale(name)
 
 local frame = CreateFrame('Frame')
 frame:HookScript('OnEvent', function(_, event, ...) TVLoader[event](TVLoader, event, ...) end)
@@ -52,8 +53,8 @@ function TVLoader:OnInitialize()
                 end,
                 OnTooltipShow = function(tooltip)
                     tooltip:AddLine('Talent Tree Viewer')
-                    tooltip:AddLine('|cffeda55fClick|r to view the talents for any spec.')
-                    tooltip:AddLine('|cffeda55fShift-Click|r to hide this button. (|cffeda55f/tv reset|r to restore)')
+                    tooltip:AddLine(L['|cffeda55fClick|r to view the talents for any spec.'])
+                    tooltip:AddLine(L['|cffeda55fShift-Click|r to hide this button. (|cffeda55f/tv reset|r to restore)'])
                 end,
             }
     )
@@ -94,7 +95,7 @@ function TVLoader:HookIntoBlizzardImport()
     local importString
 
     StaticPopupDialogs["TalentViewerDefaultImportFailedDialog"] = {
-        text = LOADOUT_ERROR_WRONG_SPEC .. "\n\n" .. "Would you like to open the build in Talent Viewer instead?",
+        text = LOADOUT_ERROR_WRONG_SPEC .. "\n\n" .. L["Would you like to open the build in Talent Viewer instead?"],
         button1 = OKAY,
         button2 = CLOSE,
         OnAccept = function(dialog)

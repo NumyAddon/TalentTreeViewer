@@ -38,6 +38,8 @@ local LibTalentTree = LibStub('LibTalentTree-1.0')
 --- @type LibUIDropDownMenu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 
+local L = LibStub('AceLocale-3.0'):GetLocale(name)
+
 local function wipe(table)
 	if table and type(table) == 'table' then
 		_G['wipe'](table)
@@ -99,7 +101,6 @@ end
 
 function TalentViewer:ResetTree()
 	local talentFrame = self:GetTalentFrame()
-	talentFrame.OutdatedWarning:Hide();
 	wipe(self.purchasedRanks);
 	wipe(self.selectedEntries);
 	wipe(self.currencySpending);
@@ -346,13 +347,13 @@ function TalentViewer:InitCheckbox()
 	if self.ignoreRestrictionsCheckbox then return end
 	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions
 	local checkbox = self.ignoreRestrictionsCheckbox
-	checkbox.Text:SetText('Ignore Restrictions')
+	checkbox.Text:SetText(L['Ignore Restrictions'])
 	if self.db then
 		checkbox:SetChecked(self.db.ignoreRestrictions)
 	end
 	checkbox:SetScript('OnEnter', function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-		GameTooltip_AddNormalLine(GameTooltip, 'Ignore restrictions when selecting talents');
+		GameTooltip_AddNormalLine(GameTooltip, L['Ignore restrictions when selecting talents']);
 		GameTooltip:Show();
 	end)
 	checkbox:SetScript('OnLeave', function(self)

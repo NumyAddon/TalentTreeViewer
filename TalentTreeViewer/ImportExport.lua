@@ -1,10 +1,11 @@
-local _, ns = ...
+local name, ns = ...
 
 --- @class TalentViewerImportExport
 local ImportExport = ns.ImportExport
 
 --- @type TalentViewer
 local TalentViewer = ns.TalentViewer
+local L = LibStub("AceLocale-3.0"):GetLocale(name);
 
 local LOADOUT_SERIALIZATION_VERSION = 1;
 
@@ -200,7 +201,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
             local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;
             if indexInfo.isNodeSelected and isChoiceNode ~= indexInfo.isChoiceNode then
                 -- guard against corrupt import strings
-                print("Import string is corrupt, node type mismatch at nodeID", treeNodeID, ". First option will be selected.");
+                print(string.format(L["Import string is corrupt, node type mismatch at nodeID %d. First option will be selected."], treeNodeID));
                 choiceNodeSelection = 1;
             end
             local result = {};

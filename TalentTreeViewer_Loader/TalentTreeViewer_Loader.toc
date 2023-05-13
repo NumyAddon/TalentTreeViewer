@@ -9,4 +9,7 @@
 ## OptionalDeps: BlizzMove
 
 libs\load_libs.xml
+
+locale\locale.xml
+
 TalentTreeViewer_Loader.lua
