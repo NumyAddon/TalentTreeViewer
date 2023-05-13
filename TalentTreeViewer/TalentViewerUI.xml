@@ -300,13 +300,6 @@
                     <OnClick function="TalentViewer_ExportButton_OnClick"/>
                 </Scripts>
             </Button>
-            <CheckButton parentKey="IgnoreRestrictions" inherits="UICheckButtonTemplate">
-                <Size x="25" y="25"/>
-                <Anchors>
-                    <Anchor point="RIGHT" relativeKey="$parent.ImportButton" relativePoint="LEFT" x="-110"/>
-                </Anchors>
-                <HitRectInsets left="0" right="-100" top="0" bottom="0"/>
-            </CheckButton>
 
             <DropDownToggleButton parentKey="ResetButton" inherits="IconButtonTemplate, DropDownMouseoverButtonTemplate">
 			    <KeyValues>
@@ -322,18 +315,13 @@
 					<Frame parentKey="DropDown" inherits="UIDropDownMenuTemplate"/>
 				</Frames>
 			</DropDownToggleButton>
-            <Frame frameStrata="HIGH" parentKey="OutdatedWarning" hidden="true">
-                <Layers>
-                    <Layer level="OVERLAY">
-                        <FontString parentKey="Text" inherits="GameFontNormalLargeOutline"
-                                    text="The tree you're viewing is possibly outdated"/>
-                    </Layer>
-                </Layers>
+            <CheckButton parentKey="IgnoreRestrictions" inherits="UICheckButtonTemplate">
+                <Size x="25" y="25"/>
                 <Anchors>
-                    <Anchor point="CENTER" relativeKey="$parent" relativePoint="CENTER"/>
+                    <Anchor point="LEFT" relativeKey="$parent.ResetButton" relativePoint="RIGHT" x="50"/>
                 </Anchors>
-                <Size x="300" y="50"/>
-            </Frame>
+                <HitRectInsets left="0" right="-100" top="0" bottom="0"/>
+            </CheckButton>
 
             <Button parentKey="UndoButton" inherits="IconButtonTemplate" hidden="true">
                 <KeyValues>
