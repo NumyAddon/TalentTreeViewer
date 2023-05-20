@@ -10,8 +10,8 @@ fi
 [ -z "$cf_token" ] && cf_token=$CF_API_KEY
 
 declare -A locale_files=(
-  ["TalentTreeViewer"]="TalentTreeViewer.lua"
-  ["TalentTreeViewer_Loader"]="TalentTreeViewer_Loader.lua"
+  ["TalentTreeViewer"]="_TalentTreeViewer_locales.lua"
+  ["TalentTreeViewer_Loader"]="_TalentTreeViewer_Loader_locales.lua"
 )
 declare -A namespace_root=(
   ["TalentTreeViewer"]="TalentTreeViewer/"
