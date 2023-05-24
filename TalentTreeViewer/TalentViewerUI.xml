@@ -193,7 +193,7 @@
                 </Anchors>
             </Frame>
 
-            <Button parentKey="TV_DropDownButton" inherits="UIPanelButtonTemplate" text="Select another Specialization">
+            <Button parentKey="TV_DropDownButton" inherits="UIPanelButtonTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION">
                 <Size x="220" y="25"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="LEFT" x="48" y="0"/>

@@ -14,6 +14,7 @@ local L = LibStub('AceLocale-3.0'):GetLocale(name)
 
 do
     TALENT_TREE_VIEWER_LOCALE_EXPORT = L["Export"];
+    TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION = L["Select another Specialization"];
 end
 
 local deepCopy, getIncomingNodeEdges, getNodeEdges;
