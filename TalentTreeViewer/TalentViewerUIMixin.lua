@@ -683,16 +683,7 @@ end
 
 function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
     if buildID == ns.starterBuildID then
-        self.starterBuildCache = self.starterBuildCache or {};
-        local specID = self:GetSpecID();
-        if not self.starterBuildCache[specID] then
-            local info = LibTalentTree:GetStarterBuildBySpec(specID);
-            if info then
-                self.starterBuildCache[specID] = info;
-            end
-        end
-
-        return self.starterBuildCache[specID];
+        return nil; -- Starter build info is not available
     end
     return TalentViewer:GetLevelingBuild(buildID);
 end
@@ -710,7 +701,7 @@ function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
 end
 
 function TalentViewerUIMixin:GetHasStarterBuild()
-    return LibTalentTree:GetStarterBuildBySpec(self:GetSpecID()) ~= nil;
+    return false;
 end
 
 function TalentViewerUIMixin:IsLevelingBuildActive()
