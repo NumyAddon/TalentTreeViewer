@@ -15,6 +15,6 @@ externals:
     TalentTreeViewer/libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
     TalentTreeViewer/libs/AceLocale-3.0: https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
     TalentTreeViewer/libs/LibTalentTree-1.0:
-        url: https://github.com/Numynum/LibTalentTree-1.0
+        url: https://github.com/NumyAddon/LibTalentTree-1.0
         curse-slug: libtalenttree
-    TalentTreeViewer/libs/LibUIDropDownMenu: https://repos.curseforge.com/wow/libuidropdownmenu/trunk/LibUIDropDownMenu
+    TalentTreeViewer/libs/LibUIDropDownMenu: https://github.com/NumyAddon/LibUIDropDownMenu

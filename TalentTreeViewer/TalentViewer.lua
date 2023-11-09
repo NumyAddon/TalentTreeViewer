@@ -36,7 +36,7 @@ TalentViewer.cache = cache
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
 --- @type LibUIDropDownMenu
-local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
+local LibDD = LibStub("LibUIDropDownMenuNumy-4.0")
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name)
 
