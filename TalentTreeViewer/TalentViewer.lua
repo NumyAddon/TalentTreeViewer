@@ -1,5 +1,6 @@
---- @type TalentViewer_NS
-local name, ns = ...
+local name = ...
+--- @class TalentViewer_NS
+local ns = select(2, ...)
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
@@ -35,7 +36,7 @@ local cache = {
 TalentViewer.cache = cache
 ---@type LibTalentTree
 local LibTalentTree = LibStub('LibTalentTree-1.0')
---- @type LibUIDropDownMenu
+--- @type LibUIDropDownMenuNumy
 local LibDD = LibStub("LibUIDropDownMenuNumy-4.0")
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name)
@@ -75,7 +76,7 @@ local function OnEvent(_, event, ...)
 		local addonName = ...
 		if addonName == name then
 			TalentViewer:OnInitialize()
-			if(IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
+			if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
 		end
 	end
 end
