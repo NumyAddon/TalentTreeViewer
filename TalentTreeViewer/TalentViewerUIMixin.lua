@@ -7,7 +7,7 @@ if not TalentViewer then return end
 --- @type TalentViewer_Cache
 local tvCache = TalentViewer.cache
 
----@type LibTalentTree
+---@type LibTalentTree-1.0
 local LibTalentTree = LibStub('LibTalentTree-1.0')
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name)
@@ -96,6 +96,7 @@ local parentMixin = ClassTalentTalentsTabMixin
 --- @class TalentViewerUIMixin
 TalentViewer_ClassTalentTalentsTabMixin = deepCopy(parentMixin)
 
+--- @class TalentViewerUIMixin
 local TalentViewerUIMixin = TalentViewer_ClassTalentTalentsTabMixin
 local function removeFromMixin(method) TalentViewerUIMixin[method] = function() end end
 removeFromMixin('UpdateConfigButtonsState')
@@ -203,10 +204,13 @@ function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
     return GetOrCreateTableEntryByCallback(self.edgeRequirementsCache, nodeID, EdgeRequirementCallback)
 end
 
+--- @return TVNodeInfo
 function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
     local function GetNodeInfoCallback(nodeID)
+        --- @class TVNodeInfo: libNodeInfo
         local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
         if not nodeInfo then
+            --- @class TVNodeInfo: libNodeInfo
             nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
             if DevTool and DevTool.AddData then
                 DevTool:AddData(
@@ -254,7 +258,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
             edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
         end
 
-        if #nodeInfo.entryIDs > 1 then
+        if nodeInfo.type == Enum.TraitNodeType.Selection then
             local entryIndex
             for i, entryId in ipairs(nodeInfo.entryIDs) do
                 if entryId == selectedEntryId then
@@ -303,7 +307,7 @@ end
 
 function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
     local function GetEntryInfoCallback(entryID)
-        local entryInfo = LibTalentTree:GetEntryInfo(self:GetTalentTreeID(), entryID);
+        local entryInfo = LibTalentTree:GetEntryInfo(entryID);
         if entryInfo then
             entryInfo.entryCost = {};
         else
@@ -682,9 +686,6 @@ function TalentViewerUIMixin:UpdateLevelingBuildHighlights()
 end
 
 function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
-    if buildID == ns.starterBuildID then
-        return nil; -- Starter build info is not available
-    end
     return TalentViewer:GetLevelingBuild(buildID);
 end
 
@@ -698,10 +699,6 @@ function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
             return entryInfo.nodeID, entryInfo.entryID;
         end
     end
-end
-
-function TalentViewerUIMixin:GetHasStarterBuild()
-    return false;
 end
 
 function TalentViewerUIMixin:IsLevelingBuildActive()

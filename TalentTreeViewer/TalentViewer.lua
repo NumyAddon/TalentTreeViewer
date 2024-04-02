@@ -4,7 +4,6 @@ local ns = select(2, ...)
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
-ns.starterBuildID = Constants.TraitConsts.STARTER_BUILD_TRAIT_CONFIG_ID
 ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31
 ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30
 ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP
@@ -34,9 +33,9 @@ local cache = {
 	specIconId = {},
 }
 TalentViewer.cache = cache
----@type LibTalentTree
+---@type LibTalentTree-1.0
 local LibTalentTree = LibStub('LibTalentTree-1.0')
---- @type LibUIDropDownMenuNumy
+--- @type LibUIDropDownMenuNumy-4.0
 local LibDD = LibStub("LibUIDropDownMenuNumy-4.0")
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name)
@@ -277,16 +276,6 @@ function TalentViewer:SelectSpec(classId, specId)
 	))
 
 	self:ResetTree();
-	-- starter builds are not really correct yet :/
-	--self:ApplyLevelingBuild(ns.starterBuildID);
-	--self:SetStarterBuildActive(false);
-	--local totalCurrencySpent = 0
-	--for _, currencySpent in pairs(self.currencySpending) do
-	--	totalCurrencySpent = totalCurrencySpent + currencySpent;
-	--end
-	--if totalCurrencySpent < ns.TOTAL_CURRENCY_CAP then
-	--	self:ResetTree();
-	--end
 end
 
 function TalentViewer:SetPortraitIcon(specId)
@@ -406,10 +395,6 @@ end
 -----------------------
 function TalentViewer:GetLevelingBuild(buildID)
 	return; -- TODO
-end
-
-function TalentViewer:SetStarterBuildActive(active)
-	self:GetTalentFrame():SetLevelingBuildID(active and ns.starterBuildID or nil)
 end
 
 function TalentViewer:ApplyLevelingBuild(buildID, level)
