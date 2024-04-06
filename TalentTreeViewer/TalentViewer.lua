@@ -99,7 +99,8 @@ function TalentViewer:ApplyCurrencySpending(treeCurrency)
 	return treeCurrency
 end
 
-function TalentViewer:ResetTree()
+--- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
+function TalentViewer:ResetTree(lockLevelingBuild)
 	local talentFrame = self:GetTalentFrame()
 	wipe(self.purchasedRanks);
 	wipe(self.selectedEntries);
@@ -111,8 +112,13 @@ function TalentViewer:ResetTree()
 	talentFrame:UpdateClassVisuals();
 	talentFrame:UpdateSpecBackground();
 	talentFrame:UpdateLevelingBuildHighlights();
-	self:ClearLevelingBuild();
-	self:StartRecordingLevelingBuild();
+	local isRecordingLevelingBuild = self:IsRecordingLevelingBuild();
+	if not lockLevelingBuild then
+        self:ClearLevelingBuild();
+        if isRecordingLevelingBuild then
+            self:StartRecordingLevelingBuild();
+        end
+	end
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -273,14 +279,15 @@ function TalentViewer:ToggleTalentView()
 end
 
 function TalentViewer:InitFrame()
-	if self.frameInitialized then return end
-	self.frameInitialized = true
-	UpdateScaleForFit(TalentViewer_DF, 200, 270)
-	table.insert(UISpecialFrames, 'TalentViewer_DF')
-	TalentViewer_DFInset:Hide()
-	self:InitDropDown()
-	self:InitCheckbox()
-	self:InitSpecSelection()
+	if self.frameInitialized then return; end
+	self.frameInitialized = true;
+	UpdateScaleForFit(TalentViewer_DF, 200, 270);
+	table.insert(UISpecialFrames, 'TalentViewer_DF');
+	TalentViewer_DFInset:Hide();
+	self:InitDropDown();
+	self:InitCheckbox();
+	self:InitSpecSelection();
+	self:InitLevelingBuildUIs();
 end
 
 function TalentViewer:SelectSpec(classId, specId)
@@ -434,26 +441,36 @@ end
 --- @param buildID number
 --- @return nil|TalentViewer_LevelingBuildEntry[]
 function TalentViewer:GetLevelingBuild(buildID)
-	return self.levelingBuilds[buildID] or nil;
+	return self.levelingBuilds[self.selectedSpecId] and self.levelingBuilds[self.selectedSpecId][buildID] or nil;
 end
 
-function TalentViewer:ApplyLevelingBuild(buildID, level)
+--- @param lockLevelingBuild boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
+function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
     local buildEntries = self:GetLevelingBuild(buildID);
-    if (not buildEntries or not next(buildEntries)) then
+    if (not buildEntries) then
         return;
     end
 
-    self.recordingInfo.active = false; -- todo: fix
-
+    self.recordingInfo.buildID = buildID;
+    self.recordingInfo.active = false;
 	self:GetTalentFrame():SetLevelingBuildID(buildID);
-	self:GetTalentFrame():ApplyLevelingBuild(level);
+	self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
     self.recordingInfo.active = true;
+end
+
+--- @param buildEntries TalentViewer_LevelingBuildEntry[]
+function TalentViewer:ImportLevelingBuild(buildEntries)
+    self:ClearLevelingBuild();
+    for _, entry in ipairs(buildEntries) do
+        self:RecordLevelingEntry(entry.nodeID, entry.targetRank, entry.entryID);
+    end
 end
 
 function TalentViewer:StartRecordingLevelingBuild()
     self.recordingInfo.active = true;
     self:GetTalentFrame().StartRecordingButton:Hide();
     self:GetTalentFrame().StopRecordingButton:Show();
+    self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), ns.MAX_LEVEL, true);
 end
 
 function TalentViewer:StopRecordingLevelingBuild()
@@ -467,9 +484,11 @@ function TalentViewer:ClearLevelingBuild()
         button:SetOrder({});
     end
     self.recordingInfo = CopyTable(defaultRecordingInfo);
-    self:StopRecordingLevelingBuild();
-    table.insert(self.levelingBuilds, self.recordingInfo.entries);
-    self.recordingInfo.buildID = #self.levelingBuilds;
+    self.levelingBuilds[self.selectedSpecId] = self.levelingBuilds[self.selectedSpecId] or {};
+    table.insert(self.levelingBuilds[self.selectedSpecId], self.recordingInfo.entries);
+    self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId];
+
+    self:GetTalentFrame():SetLevelingBuildID(self.recordingInfo.buildID);
 end
 
 function TalentViewer:IsRecordingLevelingBuild()
@@ -512,6 +531,96 @@ function TalentViewer:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
             return;
         end
     end
+end
+
+function TalentViewer:InitLevelingBuildUIs()
+    local slider = self:GetTalentFrame().LevelingBuildLevelSlider;
+    local minValue = 9;
+    local maxValue = ns.MAX_LEVEL;
+    local steps = maxValue - minValue;
+    local formatters = {
+        [MinimalSliderWithSteppersMixin.Label.Left] = function() return L['Level'] end,
+        [MinimalSliderWithSteppersMixin.Label.Right] = function(value) return value end,
+    };
+    local currentValue = 9;
+    slider:Init(currentValue, minValue, maxValue, steps, formatters);
+    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnValueChanged, function(_, value)
+        if value ~= currentValue then
+            currentValue = value;
+            self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), value, true);
+            self:StopRecordingLevelingBuild();
+        end
+    end);
+    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractStart, function(_, value)
+        GameTooltip:SetOwner(slider, "ANCHOR_RIGHT", 0, 0);
+        GameTooltip:SetText(L['Leveling build']);
+        GameTooltip:AddLine(L['Select the level to apply the leveling build to']);
+        GameTooltip:AddLine(L['This will lag out your game!']);
+        GameTooltip:Show();
+    end);
+    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractEnd, function(_, value)
+        GameTooltip:Hide();
+    end);
+
+    local dropDownButton = self:GetTalentFrame().LevelingBuildDropDownButton;
+    dropDownButton:HookScript('OnEnter', function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0);
+        GameTooltip:SetText(L['Leveling build']);
+        GameTooltip:AddLine(L['Select a leveling build to apply']);
+        GameTooltip:AddLine(L['This will reset your current talent choices!']);
+        GameTooltip:Show();
+    end);
+
+	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF);
+
+	dropDownButton = Mixin(dropDownButton, DropDownToggleButtonMixin);
+	dropDownButton:OnLoad_Intrinsic();
+	local function buildMenu()
+	    self.menuListLevelingBuilds = {};
+	    local menu = self.menuListLevelingBuilds;
+	    table.insert(menu, {
+	        text = 'Leveling builds can be saved and loaded with TalentLoadoutManager',
+	        notClickable = true,
+            notCheckable = true,
+	    });
+	    table.insert(menu, {
+	        text = 'You can also export/import leveling builds, or link them in chat',
+	        notClickable = true,
+            notCheckable = true,
+	    });
+	    if (not IsAddOnLoaded('TalentLoadoutManager')) then
+            table.insert(menu, {
+                text = 'Click to download TalentLoadoutManager',
+                notCheckable = true,
+                func = function()
+                    StaticPopup_Show("TalentViewerExportDialog", nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
+                end,
+            });
+        end
+        for buildID, buildEntries in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
+            table.insert(menu, {
+                text = string.format(
+                    'Leveling build %d (%d points spent)',
+                    buildID,
+                    #buildEntries
+                ),
+                func = function(_, buildID)
+                    self:ApplyLevelingBuild(buildID, currentValue, true);
+                    self:StopRecordingLevelingBuild();
+                end,
+                checked = self:GetCurrentLevelingBuildID() == buildID,
+                arg1 = buildID,
+            });
+        end
+	end
+	dropDownButton:SetScript('OnMouseDown', function(self)
+	    buildMenu();
+		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 5, 0, TalentViewer.menuListLevelingBuilds or nil);
+	end)
+
+	dropDown:Hide();
+	buildMenu();
+	LibDD:EasyMenu(self.menuListLevelingBuilds, dropDown, dropDown, 0, 0);
 end
 
 -------------------------

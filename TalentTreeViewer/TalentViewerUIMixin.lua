@@ -75,6 +75,10 @@ function LevelingOrderMixin:AppendToOrder(orderItem)
     table.insert(self.order, orderItem);
     self.Text:SetText(table.concat(self.order, " "));
 end
+--- @return number[]
+function LevelingOrderMixin:GetOrder()
+    return CopyTable(self.order);
+end
 
 --- @class TalentViewer_TalentButtonMixin
 local TalentButtonMixin = {};
@@ -445,8 +449,9 @@ function TalentViewerUIMixin:UpdateEdgeSiblings(nodeID)
     end
 end
 
-function TalentViewerUIMixin:ResetTree()
-    TalentViewer:ResetTree()
+--- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
+function TalentViewerUIMixin:ResetTree(lockLevelingBuild)
+    TalentViewer:ResetTree(lockLevelingBuild)
 end
 
 function TalentViewerUIMixin:ResetClassTalents()
@@ -753,22 +758,39 @@ function TalentViewerUIMixin:IsHighlightedStarterBuildEntry(entryID)
     return self.activeLevelingBuildHighlight and self.activeLevelingBuildHighlight.entryID == entryID;
 end
 
-function TalentViewerUIMixin:ApplyLevelingBuild(level)
-    level = math.max(10, math.min(ns.MAX_LEVEL, level or ns.MAX_LEVEL));
+--- @param level number
+--- @param lockLevelingBuild boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
+function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
+    level = math.max(9, math.min(ns.MAX_LEVEL, level or ns.MAX_LEVEL));
     local buildID = self:GetLevelingBuildID();
+    local info = buildID and self:GetLevelingBuildInfo(buildID);
+    if not info then return; end
 
     local backup = TalentViewer.db.ignoreRestrictions
     TalentViewer.db.ignoreRestrictions = true -- todo - add a proper way to improve performance of bulk changes
-    self:ResetTree();
-    for _ = 10, level do
-        local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
-        if not nodeID then break; end
-        if entryID then
-            self:SetSelection(nodeID, entryID);
-        else
-            self:PurchaseRank(nodeID);
+    self:ResetTree(lockLevelingBuild);
+    if level >= 10 then
+        for _ = 10, level do
+            local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+            if not nodeID then break; end
+            if entryID then
+                self:SetSelection(nodeID, entryID);
+            else
+                self:PurchaseRank(nodeID);
+            end
         end
     end
+
+    --- @type table<number, number[]>
+    local byNodes = {};
+    for index, entry in ipairs(info) do
+        byNodes[entry.nodeID] = byNodes[entry.nodeID] or {};
+        table.insert(byNodes[entry.nodeID], index);
+    end
+    for _, button in ipairs(self.levelingOrderButtons) do
+        button:SetOrder(byNodes[button:GetParent():GetNodeID()] or {});
+    end
+
     self:UpdateTreeCurrencyInfo();
     TalentViewer.db.ignoreRestrictions = backup
 end

@@ -128,22 +128,23 @@ end
 --- @param treeID number
 --- @param levelingBuild TalentViewer_LevelingBuildEntry[]
 function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBuild)
-    --- @type table<number, number[]>
-    local byNodes = {};
-    for index, entry in ipairs(levelingBuild) do
-        byNodes[entry.nodeID] = byNodes[entry.nodeID] or {};
-        table.insert(byNodes[entry.nodeID], index);
-    end
-
+    local purchasedNodesOrder = {};
     local treeNodes = C_Traits.GetTreeNodes(treeID);
+    local i = 0;
     for _, treeNodeID in ipairs(treeNodes) do
-        local entries = byNodes[treeNodeID];
-        if entries then
-            for _, entry in ipairs(entries) do
-                exportStream:AddValue(7, entry);
-            end
+        local treeNode = getNodeInfo(treeNodeID);
+        if treeNode.ranksPurchased > 0 then
+            i = i + 1;
+            purchasedNodesOrder[treeNode.ID] = i;
         end
     end
+
+    local temp = {};
+    for _, entry in ipairs(levelingBuild) do
+        table.insert(temp, {order=purchasedNodesOrder[entry.nodeID], entry=entry})
+        exportStream:AddValue(7, purchasedNodesOrder[entry.nodeID]);
+    end
+    DevTool:AddData({purchasedNodesOrder,temp});
 end
 
 function ImportExport:GetLoadoutExportString()
@@ -173,6 +174,7 @@ function ImportExport:ShowImportError(errorString)
     StaticPopup_Show("TALENT_VIEWER_LOADOUT_IMPORT_ERROR_DIALOG", errorString);
 end
 
+--- @param importText string
 function ImportExport:ImportLoadout(importText)
 
     local importStream = ExportUtil.MakeImportDataStream(importText);
@@ -198,16 +200,58 @@ function ImportExport:ImportLoadout(importText)
     local loadoutContent = self:ReadLoadoutContent(importStream, treeId);
     local loadoutEntryInfo = self:ConvertToImportLoadoutEntryInfo(treeId, loadoutContent);
 
-    local hasLevelingBuildData, recordingIsActive = false, TalentViewer:IsRecordingLevelingBuild();
-    if not hasLevelingBuildData then
-        TalentViewer.recordingInfo.active = false
-    end
+    TalentViewer:StopRecordingLevelingBuild();
 
     TalentViewer:GetTalentFrame():ImportLoadout(loadoutEntryInfo);
 
-    TalentViewer.recordingInfo.active = recordingIsActive;
+    local _, _, talentBuild, levelingBuild = importText:find(LEVELING_EXPORT_STRING_PATERN:format("(.*)", "(.*)"):gsub("%-", "%%-"));
+    if levelingBuild then
+        local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuild);
+        local levelingHeaderValid, levelingSerializationVersion = self:ReadLevelingExportHeader(levelingImportStream);
+        if levelingHeaderValid and levelingSerializationVersion == LEVELING_BUILD_SERIALIZATION_VERSION then
+            local levelingBuildEntries = self:ReadLevelingBuildContent(levelingImportStream, treeId, loadoutEntryInfo);
+            TalentViewer:ImportLevelingBuild(levelingBuildEntries);
+        end
+    else
+        TalentViewer:ClearLevelingBuild();
+    end
 
     return true;
+end
+
+function ImportExport:ReadLevelingExportHeader(importStream)
+    local headerBitWidth = self.levelingBitWidthVersion;
+    local importStreamTotalBits = importStream:GetNumberOfBits();
+    if( importStreamTotalBits < headerBitWidth) then
+        return false, 0;
+    end
+    local serializationVersion = importStream:ExtractValue(self.levelingBitWidthVersion);
+    return true, serializationVersion;
+end
+
+--- @param loadoutEntryInfo TalentViewer_LoadoutEntryInfo[]
+--- @return TalentViewer_LevelingBuildEntry[]
+function ImportExport:ReadLevelingBuildContent(importStream, treeID, loadoutEntryInfo)
+    local results = {};
+
+    local numberOfEntries = #loadoutEntryInfo;
+    local purchasesByNodeID = {};
+    for i = 1, numberOfEntries do
+        local orderIndex = importStream:ExtractValue(7);
+        if not orderIndex then break; end
+
+        local entry = loadoutEntryInfo[orderIndex];
+        if entry then
+            purchasesByNodeID[entry.nodeID] = (purchasesByNodeID[entry.nodeID] or 0) + 1;
+            local result = {};
+            result.nodeID = entry.nodeID;
+            result.entryID = entry.isChoiceNode and entry.selectionEntryID;
+            result.targetRank = purchasesByNodeID[entry.nodeID];
+            results[i] = result;
+        end
+    end
+DevTool:AddData({results,purchasesByNodeID,loadoutEntryInfo});
+    return results;
 end
 
 function ImportExport:WriteLoadoutHeader(exportStream, serializationVersion, specID)
@@ -234,7 +278,8 @@ function ImportExport:ReadLoadoutHeader(importStream)
     return true, serializationVersion, specID, treeHash;
 end
 
--- converts from compact bit-packing format to LoadoutEntryInfo format to pass to ImportLoadout API
+--- converts from compact bit-packing format to LoadoutEntryInfo format to pass to ImportLoadout API
+--- @return TalentViewer_LoadoutEntryInfo[]
 function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
     local results = {};
     local treeNodes = C_Traits.GetTreeNodes(treeID);
