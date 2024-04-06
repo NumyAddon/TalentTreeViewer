@@ -324,6 +324,55 @@
                 <HitRectInsets left="0" right="-100" top="0" bottom="0"/>
             </CheckButton>
 
+            <Button parentKey="StartRecordingButton" inherits="UIPanelButtonTemplate, UIButtonTemplate" text="Start Leveling Build Recording" hidden="true"> <!-- text="TALENT_TREE_VIEWER_LOCALE_START_RECORDING" -->
+                <KeyValues>
+<!--                    <KeyValue key="tooltipText" value="TALENT_FRAME_DISCARD_CHANGES_BUTTON_TOOLTIP" type="global"/>-->
+                    <KeyValue key="tooltipText" value="Start recording a leveling build, starting with the current build"/>
+                    <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
+                </KeyValues>
+                <Size x="220" y="25"/>
+                <Anchors>
+                    <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="RIGHT" x="-10" y="3"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        self:GetParent():GetTalentViewer():StartRecordingLevelingBuild()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button parentKey="StopRecordingButton" inherits="UIPanelButtonTemplate, UIButtonTemplate" text="Stop Leveling Build Recording" hidden="true"> <!-- text="TALENT_TREE_VIEWER_LOCALE_STOP_RECORDING" -->
+                <KeyValues>
+<!--                    <KeyValue key="tooltipText" value="TALENT_FRAME_DISCARD_CHANGES_BUTTON_TOOLTIP" type="global"/>-->
+                    <KeyValue key="tooltipText" value="Stop recording the leveling build"/>
+                    <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
+                </KeyValues>
+                <Size x="220" y="25"/>
+                <Anchors>
+                    <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="RIGHT" x="-10" y="3"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        self:GetParent():GetTalentViewer():StopRecordingLevelingBuild()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button parentKey="ResetRecordingButton" inherits="UIPanelButtonTemplate, UIButtonTemplate" text="Reset Leveling Build Recording"> <!-- text="TALENT_TREE_VIEWER_LOCALE_STOP_RECORDING" -->
+                <KeyValues>
+<!--                    <KeyValue key="tooltipText" value="TALENT_FRAME_DISCARD_CHANGES_BUTTON_TOOLTIP" type="global"/>-->
+                    <KeyValue key="tooltipText" value="Reset leveling build recording"/>
+                    <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
+                </KeyValues>
+                <Size x="220" y="25"/>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeKey="$parent.StopRecordingButton" relativePoint="BOTTOMRIGHT" x="0" y="-3"/>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        self:GetParent():GetTalentViewer():ClearLevelingBuild()
+                    </OnClick>
+                </Scripts>
+            </Button>
+
             <Button parentKey="UndoButton" inherits="IconButtonTemplate" hidden="true">
                 <KeyValues>
                     <KeyValue key="iconAtlas" value="talents-button-undo" type="string"/>

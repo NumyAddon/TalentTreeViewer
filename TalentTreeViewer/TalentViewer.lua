@@ -111,6 +111,8 @@ function TalentViewer:ResetTree()
 	talentFrame:UpdateClassVisuals();
 	talentFrame:UpdateSpecBackground();
 	talentFrame:UpdateLevelingBuildHighlights();
+	self:ClearLevelingBuild();
+	self:StartRecordingLevelingBuild();
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -137,18 +139,40 @@ end
 function TalentViewer:PurchaseRank(nodeID)
 	self:ReduceCurrency(nodeID)
 	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1
+
+	if self:IsRecordingLevelingBuild() then
+        self:RecordLevelingEntry(nodeID, self.purchasedRanks[nodeID])
+    end
 end
 
 function TalentViewer:RefundRank(nodeID)
 	self:RestoreCurrency(nodeID)
 	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1
+
+	if self:IsRecordingLevelingBuild() then
+        self:RemoveLastRecordedLevelingEntry(nodeID)
+    end
 end
 
 function TalentViewer:SetSelection(nodeID, entryID)
-	if (entryID and not self.selectedEntries[nodeID]) then
+    local hasPreviousSelection = self.selectedEntries[nodeID] ~= nil
+
+    if (entryID and hasPreviousSelection and entryID ~= self.selectedEntries[nodeID]) then
+        if self:IsRecordingLevelingBuild() then
+            self:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
+        end
+	elseif (entryID and not hasPreviousSelection) then
 		self:ReduceCurrency(nodeID)
-	elseif (not entryID and self.selectedEntries[nodeID]) then
+
+		if self:IsRecordingLevelingBuild() then
+            self:RecordLevelingEntry(nodeID, 1, entryID)
+        end
+	elseif (not entryID and hasPreviousSelection) then
 		self:RestoreCurrency(nodeID)
+
+		if self:IsRecordingLevelingBuild() then
+            self:RemoveLastRecordedLevelingEntry(nodeID)
+        end
 	end
 
 	self.selectedEntries[nodeID] = entryID
@@ -393,13 +417,101 @@ end
 -----------------------
 --- Leveling builds ---
 -----------------------
+local defaultRecordingInfo = {
+    active = true,
+    buildID = 0, -- matches #levelingBuilds, effectively an auto increment
+    currentIndex = 0,
+    entries = {},
+}
+--- @type table<number, TalentViewer_LevelingBuildEntry[]> # [buildID] = entries
+TalentViewer.levelingBuilds = {};
+TalentViewer.recordingInfo = CreateFromMixins(defaultRecordingInfo);
+
+function TalentViewer:GetCurrentLevelingBuildID()
+    return self.recordingInfo.buildID;
+end
+
+--- @param buildID number
+--- @return nil|TalentViewer_LevelingBuildEntry[]
 function TalentViewer:GetLevelingBuild(buildID)
-	return; -- TODO
+	return self.levelingBuilds[buildID] or nil;
 end
 
 function TalentViewer:ApplyLevelingBuild(buildID, level)
-	self:GetTalentFrame():SetLevelingBuildID(buildID)
-	self:GetTalentFrame():ApplyLevelingBuild(level)
+    local buildEntries = self:GetLevelingBuild(buildID);
+    if (not buildEntries or not next(buildEntries)) then
+        return;
+    end
+
+    self.recordingInfo.active = false; -- todo: fix
+
+	self:GetTalentFrame():SetLevelingBuildID(buildID);
+	self:GetTalentFrame():ApplyLevelingBuild(level);
+    self.recordingInfo.active = true;
+end
+
+function TalentViewer:StartRecordingLevelingBuild()
+    self.recordingInfo.active = true;
+    self:GetTalentFrame().StartRecordingButton:Hide();
+    self:GetTalentFrame().StopRecordingButton:Show();
+end
+
+function TalentViewer:StopRecordingLevelingBuild()
+    self.recordingInfo.active = false;
+    self:GetTalentFrame().StartRecordingButton:Show();
+    self:GetTalentFrame().StopRecordingButton:Hide();
+end
+
+function TalentViewer:ClearLevelingBuild()
+    for _, button in ipairs(self:GetTalentFrame().levelingOrderButtons) do
+        button:SetOrder({});
+    end
+    self.recordingInfo = CopyTable(defaultRecordingInfo);
+    self:StopRecordingLevelingBuild();
+    table.insert(self.levelingBuilds, self.recordingInfo.entries);
+    self.recordingInfo.buildID = #self.levelingBuilds;
+end
+
+function TalentViewer:IsRecordingLevelingBuild()
+    return self.recordingInfo.active;
+end
+
+--- @param nodeID number
+--- @param targetRank number
+--- @param entryID ?number
+function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
+    local currentIndex = self.recordingInfo.currentIndex + 1;
+    self.recordingInfo.entries[currentIndex] = {
+        nodeID = nodeID,
+        targetRank = targetRank,
+        entryID = entryID,
+    };
+    self.recordingInfo.currentIndex = currentIndex;
+
+    self:GetTalentFrame():GetTalentButtonByNodeID(nodeID).LevelingOrder:AppendToOrder(currentIndex);
+end
+
+function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
+    local currentIndex = self.recordingInfo.currentIndex;
+    for i = currentIndex, 1, -1 do
+        local entry = self.recordingInfo.entries[i];
+        if (entry.nodeID == nodeID) then
+            table.remove(self.recordingInfo.entries, i);
+            self.recordingInfo.currentIndex = i - 1;
+            return;
+        end
+    end
+end
+
+function TalentViewer:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
+    local currentIndex = self.recordingInfo.currentIndex;
+    for i = currentIndex, 1, -1 do
+        local entry = self.recordingInfo.entries[i];
+        if (entry.nodeID == nodeID) then
+            entry.entryID = entryID;
+            return;
+        end
+    end
 end
 
 -------------------------

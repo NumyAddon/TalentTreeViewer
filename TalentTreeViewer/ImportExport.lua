@@ -8,6 +8,8 @@ local TalentViewer = ns.TalentViewer
 local L = LibStub("AceLocale-3.0"):GetLocale(name);
 
 local LOADOUT_SERIALIZATION_VERSION = 1;
+local LEVELING_BUILD_SERIALIZATION_VERSION = 1;
+local LEVELING_EXPORT_STRING_PATERN = "%s-LVL-%s";
 
 local getNodeInfo = function(nodeId) return TalentViewer:GetTalentFrame():GetAndCacheNodeInfo(nodeId) end
 
@@ -17,6 +19,9 @@ end
 function ImportExport:GetSpecId()
     return TalentViewer.selectedSpecId;
 end
+
+ImportExport.levelingBitWidthVersion = 5;
+ImportExport.levelingBitWidthData = 7; -- allows for 128 order indexes
 
 ----- copied and adapted from Blizzard_ClassTalentImportExport.lua -----
 
@@ -116,6 +121,30 @@ function ImportExport:ReadLoadoutContent(importStream, treeID)
     return results;
 end
 
+function ImportExport:WriteLevelingExportHeader(exportStream, serializationVersion)
+    exportStream:AddValue(self.levelingBitWidthVersion, serializationVersion);
+end
+
+--- @param treeID number
+--- @param levelingBuild TalentViewer_LevelingBuildEntry[]
+function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBuild)
+    --- @type table<number, number[]>
+    local byNodes = {};
+    for index, entry in ipairs(levelingBuild) do
+        byNodes[entry.nodeID] = byNodes[entry.nodeID] or {};
+        table.insert(byNodes[entry.nodeID], index);
+    end
+
+    local treeNodes = C_Traits.GetTreeNodes(treeID);
+    for _, treeNodeID in ipairs(treeNodes) do
+        local entries = byNodes[treeNodeID];
+        if entries then
+            for _, entry in ipairs(entries) do
+                exportStream:AddValue(7, entry);
+            end
+        end
+    end
+end
 
 function ImportExport:GetLoadoutExportString()
     local exportStream = ExportUtil.MakeExportDataStream();
@@ -125,7 +154,19 @@ function ImportExport:GetLoadoutExportString()
     self:WriteLoadoutHeader(exportStream, LOADOUT_SERIALIZATION_VERSION, currentSpecID);
     self:WriteLoadoutContent(exportStream, treeId);
 
-    return exportStream:GetExportString();
+    local loadoutString = exportStream:GetExportString();
+
+    local levelingBuildID = TalentViewer:GetCurrentLevelingBuildID();
+    local levelingBuild = TalentViewer:GetLevelingBuild(levelingBuildID);
+    if not levelingBuild or not next(levelingBuild) then
+        return loadoutString;
+    end
+
+    local levelingExportStream = ExportUtil.MakeExportDataStream();
+    self:WriteLevelingExportHeader(levelingExportStream, LEVELING_BUILD_SERIALIZATION_VERSION);
+    self:WriteLevelingBuildContent(levelingExportStream, treeId, levelingBuild);
+
+    return LEVELING_EXPORT_STRING_PATERN:format(loadoutString, levelingExportStream:GetExportString());
 end
 
 function ImportExport:ShowImportError(errorString)
@@ -157,7 +198,14 @@ function ImportExport:ImportLoadout(importText)
     local loadoutContent = self:ReadLoadoutContent(importStream, treeId);
     local loadoutEntryInfo = self:ConvertToImportLoadoutEntryInfo(treeId, loadoutContent);
 
+    local hasLevelingBuildData, recordingIsActive = false, TalentViewer:IsRecordingLevelingBuild();
+    if not hasLevelingBuildData then
+        TalentViewer.recordingInfo.active = false
+    end
+
     TalentViewer:GetTalentFrame():ImportLoadout(loadoutEntryInfo);
+
+    TalentViewer.recordingInfo.active = recordingIsActive;
 
     return true;
 end
