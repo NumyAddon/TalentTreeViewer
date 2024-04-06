@@ -139,12 +139,9 @@ function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBu
         end
     end
 
-    local temp = {};
     for _, entry in ipairs(levelingBuild) do
-        table.insert(temp, {order=purchasedNodesOrder[entry.nodeID], entry=entry})
         exportStream:AddValue(7, purchasedNodesOrder[entry.nodeID]);
     end
-    DevTool:AddData({purchasedNodesOrder,temp});
 end
 
 function ImportExport:GetLoadoutExportString()
@@ -250,7 +247,7 @@ function ImportExport:ReadLevelingBuildContent(importStream, treeID, loadoutEntr
             results[i] = result;
         end
     end
-DevTool:AddData({results,purchasesByNodeID,loadoutEntryInfo});
+
     return results;
 end
 
