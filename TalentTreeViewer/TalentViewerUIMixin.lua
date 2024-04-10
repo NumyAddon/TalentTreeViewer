@@ -68,11 +68,32 @@ local LevelingOrderMixin = {};
 --- @param order number[]
 function LevelingOrderMixin:SetOrder(order)
     self.order = CopyTable(order);
-    self.Text:SetText(table.concat(order, " "));
+    self:UpdateText();
 end
---- @param orderItem number
-function LevelingOrderMixin:AppendToOrder(orderItem)
-    table.insert(self.order, orderItem);
+--- @param level number
+function LevelingOrderMixin:AppendToOrder(level)
+    table.insert(self.order, level);
+    self:UpdateText();
+end
+function LevelingOrderMixin:RemoveLastOrder()
+    for i = #self.order, 1, -1 do
+        if self.order[i] then
+            table.remove(self.order, i);
+            break;
+        end
+    end
+    self:UpdateText();
+end
+function LevelingOrderMixin:UpdateOrder(oldLevel, newLevel)
+    for i, level in ipairs(self.order) do
+        if level == oldLevel then
+            self.order[i] = newLevel;
+            break;
+        end
+    end
+    self:UpdateText();
+end
+function LevelingOrderMixin:UpdateText()
     self.Text:SetText(table.concat(self.order, " "));
 end
 --- @return number[]
@@ -365,7 +386,7 @@ end
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
     local backup = TalentViewer.db.ignoreRestrictions
     TalentViewer.db.ignoreRestrictions = true
-    self:ResetTree()
+    self:ResetTree(true)
     for _, entry in ipairs(loadoutEntryInfo) do
         if(entry.isChoiceNode) then
             self:SetSelection(entry.nodeID, entry.selectionEntryID)

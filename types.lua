@@ -11,11 +11,16 @@
 --- @field talentFrame TalentViewerUIMixin
 --- @field LevelingOrder TalentViewer_LevelingOrderFrame
 --- @field GetNodeID fun(): number
+--- @field GetNodeInfo fun(): TVNodeInfo
 
 --- @class TalentViewer_LevelingOrderFrame: FRAME
 --- @field Text FontString
 --- @field order number[]
 --- @field GetParent fun(): TalentViewer_TalentButtonMixin
+
+--- @class TalentViewer_LevelingBuildInfoContainer
+--- @field entries table<number, TalentViewer_LevelingBuildEntry[]> # [specOrClass] = entries (specOrClass is 1 for class, 2 for spec)
+--- @field startingOffset table<number, number> # [specOrClass] = startingOffset (specOrClass is 1 for class, 2 for spec); so that level = startingOffset + (index * 2)
 
 --- @class TalentViewer_LevelingBuildEntry
 --- @field nodeID number

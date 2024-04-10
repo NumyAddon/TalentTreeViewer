@@ -126,7 +126,7 @@ function ImportExport:WriteLevelingExportHeader(exportStream, serializationVersi
 end
 
 --- @param treeID number
---- @param levelingBuild TalentViewer_LevelingBuildEntry[]
+--- @param levelingBuild table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
 function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBuild)
     local purchasedNodesOrder = {};
     local treeNodes = C_Traits.GetTreeNodes(treeID);
@@ -138,9 +138,21 @@ function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBu
             purchasedNodesOrder[treeNode.ID] = i;
         end
     end
+    local numberOfLevelingEntries = 0;
+    for level = 10, ns.MAX_LEVEL do
+        local entry = levelingBuild[level];
+        if entry then
+            numberOfLevelingEntries = numberOfLevelingEntries + 1;
+        end
+    end
 
-    for _, entry in ipairs(levelingBuild) do
-        exportStream:AddValue(7, purchasedNodesOrder[entry.nodeID]);
+    for level = 10, ns.MAX_LEVEL do
+        local entry = levelingBuild[level];
+        exportStream:AddValue(7, entry and purchasedNodesOrder[entry.nodeID] or 0);
+        numberOfLevelingEntries = numberOfLevelingEntries - (entry and 1 or 0);
+        if 0 == numberOfLevelingEntries then
+            break;
+        end
     end
 end
 
@@ -206,7 +218,7 @@ function ImportExport:ImportLoadout(importText)
         local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuild);
         local levelingHeaderValid, levelingSerializationVersion = self:ReadLevelingExportHeader(levelingImportStream);
         if levelingHeaderValid and levelingSerializationVersion == LEVELING_BUILD_SERIALIZATION_VERSION then
-            local levelingBuildEntries = self:ReadLevelingBuildContent(levelingImportStream, treeId, loadoutEntryInfo);
+            local levelingBuildEntries = self:ReadLevelingBuildContent(levelingImportStream, loadoutEntryInfo);
             TalentViewer:ImportLevelingBuild(levelingBuildEntries);
         end
     else
@@ -227,24 +239,29 @@ function ImportExport:ReadLevelingExportHeader(importStream)
 end
 
 --- @param loadoutEntryInfo TalentViewer_LoadoutEntryInfo[]
---- @return TalentViewer_LevelingBuildEntry[]
-function ImportExport:ReadLevelingBuildContent(importStream, treeID, loadoutEntryInfo)
+--- @return table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+function ImportExport:ReadLevelingBuildContent(importStream, loadoutEntryInfo)
     local results = {};
 
-    local numberOfEntries = #loadoutEntryInfo;
     local purchasesByNodeID = {};
-    for i = 1, numberOfEntries do
-        local orderIndex = importStream:ExtractValue(7);
-        if not orderIndex then break; end
+    for level = 10, ns.MAX_LEVEL+1 do
+        local success, orderIndex = pcall(importStream.ExtractValue, importStream, 7);
+        if not success or not orderIndex then break; end -- end of stream
 
         local entry = loadoutEntryInfo[orderIndex];
         if entry then
-            purchasesByNodeID[entry.nodeID] = (purchasesByNodeID[entry.nodeID] or 0) + 1;
+            purchasesByNodeID[entry.nodeID] = entry.ranksPurchased;
             local result = {};
             result.nodeID = entry.nodeID;
             result.entryID = entry.isChoiceNode and entry.selectionEntryID;
-            result.targetRank = purchasesByNodeID[entry.nodeID];
-            results[i] = result;
+            results[level] = result;
+        end
+    end
+    for level = ns.MAX_LEVEL, 9, -1 do
+        local result = results[level];
+        if result then
+            result.targetRank = purchasesByNodeID[result.nodeID];
+            purchasesByNodeID[result.nodeID] = purchasesByNodeID[result.nodeID] - 1;
         end
     end
 
@@ -294,11 +311,13 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
                 print(string.format(L["Import string is corrupt, node type mismatch at nodeID %d. First option will be selected."], treeNodeID));
                 choiceNodeSelection = 1;
             end
-            local result = {};
-            result.nodeID = treeNode.ID;
-            result.ranksPurchased = indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or treeNode.maxRanks;
-            result.selectionEntryID = (indexInfo.isNodeSelected and isChoiceNode and treeNode.entryIDs[choiceNodeSelection]) or (treeNode.activeEntry and treeNode.activeEntry.entryID);
-            result.isChoiceNode = isChoiceNode;
+            --- @type TalentViewer_LoadoutEntryInfo
+            local result = {
+                nodeID = treeNode.ID,
+                ranksPurchased = indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or treeNode.maxRanks,
+                selectionEntryID = (indexInfo.isNodeSelected and isChoiceNode and treeNode.entryIDs[choiceNodeSelection]) or (treeNode.activeEntry and treeNode.activeEntry.entryID),
+                isChoiceNode = isChoiceNode,
+            };
             results[count] = result;
             count = count + 1;
         end
