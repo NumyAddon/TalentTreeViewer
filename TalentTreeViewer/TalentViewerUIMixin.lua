@@ -745,7 +745,7 @@ function TalentViewerUIMixin:UpdateLevelingBuildHighlights()
     end
 end
 
---- @return nil|TalentViewer_LevelingBuildEntry[]
+--- @return nil|table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
 function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
     return TalentViewer:GetLevelingBuild(buildID);
 end
@@ -754,9 +754,10 @@ function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
     local info = self:GetLevelingBuildInfo(buildID);
     if not info then return; end
 
-    for _, entryInfo in ipairs(info) do
-        local nodeInfo = self:GetAndCacheNodeInfo(entryInfo.nodeID);
-        if nodeInfo.ranksPurchased < entryInfo.targetRank then
+    for i = 10, ns.MAX_LEVEL do
+        local entryInfo = info[i];
+        local nodeInfo = entryInfo and self:GetAndCacheNodeInfo(entryInfo.nodeID);
+        if nodeInfo and nodeInfo.ranksPurchased < entryInfo.targetRank then
             return entryInfo.nodeID, entryInfo.entryID;
         end
     end
@@ -802,14 +803,16 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
         end
     end
 
-    --- @type table<number, number[]>
-    local byNodes = {};
-    for index, entry in ipairs(info) do
-        byNodes[entry.nodeID] = byNodes[entry.nodeID] or {};
-        table.insert(byNodes[entry.nodeID], index);
-    end
     for _, button in ipairs(self.levelingOrderButtons) do
-        button:SetOrder(byNodes[button:GetParent():GetNodeID()] or {});
+        button:SetOrder({});
+    end
+    for entryLevel = 10, ns.MAX_LEVEL do
+        local entryInfo = info[entryLevel];
+        if entryInfo then
+            local nodeID = entryInfo.nodeID;
+            local button = self:GetTalentButtonByNodeID(nodeID);
+            button.LevelingOrder:AppendToOrder(entryLevel);
+        end
     end
 
     self:UpdateTreeCurrencyInfo();

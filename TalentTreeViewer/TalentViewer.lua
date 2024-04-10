@@ -572,8 +572,7 @@ function TalentViewer:ClearLevelingBuild()
     table.insert(self.levelingBuilds[self.selectedSpecId], info);
     self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId];
 
-    self:RecalculateCurrentStartingOffsets();
-    self:GetTalentFrame():SetLevelingBuildID(self.recordingInfo.buildID);
+    self:StartRecordingLevelingBuild();
 end
 
 function TalentViewer:IsRecordingLevelingBuild()
@@ -700,12 +699,12 @@ function TalentViewer:InitLevelingBuildUIs()
                 end,
             });
         end
-        for buildID, buildEntries in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
+        for buildID, buildInfo in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
             table.insert(menu, {
                 text = string.format(
                     'Leveling build %d (%d points spent)',
                     buildID,
-                    #buildEntries
+                    #buildInfo.entries[1] + #buildInfo.entries[2]
                 ),
                 func = function(_, buildID)
                     self:ApplyLevelingBuild(buildID, currentValue, true);
