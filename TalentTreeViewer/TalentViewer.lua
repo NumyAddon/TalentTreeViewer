@@ -653,24 +653,27 @@ function TalentViewer:InitLevelingBuildUIs()
             self:StopRecordingLevelingBuild();
         end
     end);
-    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractStart, function(_, value)
-        GameTooltip:SetOwner(slider, "ANCHOR_RIGHT", 0, 0);
+    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractStart, function()
+        GameTooltip:SetOwner(slider, 'ANCHOR_RIGHT', 0, 0);
         GameTooltip:SetText(L['Leveling build']);
         GameTooltip:AddLine(L['Select the level to apply the leveling build to']);
         GameTooltip:AddLine(L['This will lag out your game!']);
         GameTooltip:Show();
     end);
-    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractEnd, function(_, value)
+    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractEnd, function()
         GameTooltip:Hide();
     end);
 
     local dropDownButton = self:GetTalentFrame().LevelingBuildDropDownButton;
-    dropDownButton:HookScript('OnEnter', function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0);
+    dropDownButton:HookScript('OnEnter', function()
+        GameTooltip:SetOwner(dropDownButton, 'ANCHOR_RIGHT', 0, 0);
         GameTooltip:SetText(L['Leveling build']);
         GameTooltip:AddLine(L['Select a leveling build to apply']);
         GameTooltip:AddLine(L['This will reset your current talent choices!']);
         GameTooltip:Show();
+    end);
+    dropDownButton:HookScript('OnLeave', function()
+        GameTooltip:Hide();
     end);
 
 	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF);
@@ -681,28 +684,28 @@ function TalentViewer:InitLevelingBuildUIs()
 	    self.menuListLevelingBuilds = {};
 	    local menu = self.menuListLevelingBuilds;
 	    table.insert(menu, {
-	        text = 'Leveling builds can be saved and loaded with TalentLoadoutManager',
+	        text = L['Leveling builds can be saved and loaded with TalentLoadoutManager'],
 	        notClickable = true,
             notCheckable = true,
 	    });
 	    table.insert(menu, {
-	        text = 'You can also export/import leveling builds, or link them in chat',
+	        text = L['You can also export/import leveling builds, or link them in chat'],
 	        notClickable = true,
             notCheckable = true,
 	    });
 	    if (not IsAddOnLoaded('TalentLoadoutManager')) then
             table.insert(menu, {
-                text = 'Click to download TalentLoadoutManager',
+                text = L['Click to download TalentLoadoutManager'],
                 notCheckable = true,
                 func = function()
-                    StaticPopup_Show("TalentViewerExportDialog", nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
+                    StaticPopup_Show('TalentViewerExportDialog', nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
                 end,
             });
         end
         for buildID, buildInfo in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
             table.insert(menu, {
                 text = string.format(
-                    'Leveling build %d (%d points spent)',
+                    L['Leveling build %d (%d points spent)'],
                     buildID,
                     #buildInfo.entries[1] + #buildInfo.entries[2]
                 ),

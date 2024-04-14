@@ -2,6 +2,7 @@
 
 - Version: 1
 - Date: April 2024
+- Authoritative Source: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer/levelingBuildFormat.md)
 
 ## Purpose
 The purpose of the export string is to provide a way to save and share the order in which talents are learned while leveling.

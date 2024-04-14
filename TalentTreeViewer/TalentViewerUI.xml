@@ -324,13 +324,27 @@
                 <HitRectInsets left="0" right="-100" top="0" bottom="0"/>
             </CheckButton>
 
+            <Frame parentKey="LevelingBuildHeader">
+                <Size x="240" y="25"/>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeKey="$parent.BottomBar" relativePoint="TOPRIGHT" x="-20" y="-3"/>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <FontString parentKey="Text" inherits="GameFontNormal" text="TALENT_TREE_VIEWER_LOCALE_LEVELING_BUILD_HEADER" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT"/>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+            </Frame>
             <Button parentKey="StartRecordingButton" inherits="IconButtonTemplate" hidden="true">
                 <KeyValues>
                     <KeyValue key="iconAtlas" value="CreditsScreen-Assets-Buttons-Play" type="string"/>
                     <KeyValue key="useAtlasSize" value="true" type="boolean"/>
                     <KeyValue key="useIconAsHighlight" value="true" type="boolean"/>
-<!--                    <KeyValue key="tooltipText" value="TALENT_FRAME_DISCARD_CHANGES_BUTTON_TOOLTIP" type="global"/>-->
-                    <KeyValue key="tooltipText" value="Start/resume recording a leveling build. This will fast-forward you to the highest level in the current build." />
+                    <KeyValue key="tooltipText" value="TALENT_TREE_VIEWER_LOCALE_START_RECORDING_TOOLTIP" type="global"/>
                     <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
                 </KeyValues>
                 <Size x="25" y="25"/>
@@ -348,8 +362,7 @@
                     <KeyValue key="iconAtlas" value="CreditsScreen-Assets-Buttons-Pause" type="string"/>
                     <KeyValue key="useAtlasSize" value="true" type="boolean"/>
                     <KeyValue key="useIconAsHighlight" value="true" type="boolean"/>
-<!--                    <KeyValue key="tooltipText" value="TALENT_FRAME_DISCARD_CHANGES_BUTTON_TOOLTIP" type="global"/>-->
-                    <KeyValue key="tooltipText" value="Stop recording the leveling build"/>
+                    <KeyValue key="tooltipText" value="TALENT_TREE_VIEWER_LOCALE_STOP_RECORDING_TOOLTIP" type="global"/>
                     <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
                 </KeyValues>
                 <Size x="25" y="25"/>
@@ -367,7 +380,7 @@
                     <KeyValue key="iconAtlas" value="talents-button-undo" type="string"/>
                     <KeyValue key="useAtlasSize" value="true" type="boolean"/>
                     <KeyValue key="useIconAsHighlight" value="true" type="boolean"/>
-                    <KeyValue key="tooltipText" value="Save leveling build recording, and reset the leveling build"/>
+                    <KeyValue key="tooltipText" value="TALENT_TREE_VIEWER_LOCALE_RESET_RECORDING_TOOLTIP" type="global"/>
                     <KeyValue key="tooltipTextColor" value="HIGHLIGHT_FONT_COLOR" type="global"/>
                 </KeyValues>
                 <Size x="25" y="25"/>
@@ -380,7 +393,7 @@
                     </OnClick>
                 </Scripts>
             </Button>
-            <Button parentKey="LevelingBuildDropDownButton" inherits="UIPanelButtonTemplate" text="Select Recorded Build"> <!-- text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION" -->
+            <Button parentKey="LevelingBuildDropDownButton" inherits="UIPanelButtonTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_RECORDED_BUILD"> <!-- text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION" -->
                 <Size x="150" y="25"/>
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="RIGHT" x="-30" y="3"/>

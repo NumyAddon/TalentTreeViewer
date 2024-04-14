@@ -13,8 +13,13 @@ local LibTalentTree = LibStub('LibTalentTree-1.0');
 local L = LibStub('AceLocale-3.0'):GetLocale(name);
 
 do
-    TALENT_TREE_VIEWER_LOCALE_EXPORT = L["Export"];
-    TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION = L["Select another Specialization"];
+    TALENT_TREE_VIEWER_LOCALE_EXPORT = L['Export'];
+    TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION = L['Select another Specialization'];
+    TALENT_TREE_VIEWER_LOCALE_START_RECORDING_TOOLTIP = L['Start/resume recording a leveling build. This will fast-forward you to the highest level in the current build.'];
+    TALENT_TREE_VIEWER_LOCALE_STOP_RECORDING_TOOLTIP = L['Stop recording the leveling build.'];
+    TALENT_TREE_VIEWER_LOCALE_RESET_RECORDING_TOOLTIP = L['Save leveling build recording, and reset the leveling build.'];
+    TALENT_TREE_VIEWER_LOCALE_SELECT_RECORDED_BUILD = L['Select Recorded Build'];
+    TALENT_TREE_VIEWER_LOCALE_LEVELING_BUILD_HEADER = L['Leveling Build Tools'];
 end
 
 local deepCopy, getIncomingNodeEdges, getNodeEdges;
@@ -94,7 +99,7 @@ function LevelingOrderMixin:UpdateOrder(oldLevel, newLevel)
     self:UpdateText();
 end
 function LevelingOrderMixin:UpdateText()
-    self.Text:SetText(table.concat(self.order, " "));
+    self.Text:SetText(table.concat(self.order, ' '));
 end
 --- @return number[]
 function LevelingOrderMixin:GetOrder()
@@ -104,11 +109,11 @@ end
 --- @class TalentViewer_TalentButtonMixin
 local TalentButtonMixin = {};
 function TalentButtonMixin:OnClick(button)
-    EventRegistry:TriggerEvent("TalentButton.OnClick", self, button);
+    EventRegistry:TriggerEvent('TalentButton.OnClick', self, button);
 
-    if button == "LeftButton" and self:CanPurchaseRank() then
+    if button == 'LeftButton' and self:CanPurchaseRank() then
         self:PurchaseRank();
-    elseif button == "RightButton" and self:CanRefundRank() then
+    elseif button == 'RightButton' and self:CanRefundRank() then
         self:RefundRank();
     end
 end
@@ -288,8 +293,8 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         local isAvailable = meetsGateRequirements
 
         nodeInfo.activeRank = isGranted
-                and nodeInfo.maxRanks
-                or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
+            and nodeInfo.maxRanks
+            or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
         nodeInfo.currentRank = nodeInfo.activeRank
         nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
         nodeInfo.isAvailable = isAvailable
@@ -406,17 +411,17 @@ function TalentViewerUIMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, 
     Mixin(talentButton, TalentButtonMixin);
     if not talentButton.LevelingOrder then
         ---@diagnostic disable-next-line: assign-type-mismatch
-        talentButton.LevelingOrder = CreateFrame("Frame", nil, talentButton);
+        talentButton.LevelingOrder = CreateFrame('Frame', nil, talentButton);
         local levelingOrder = talentButton.LevelingOrder;
         Mixin(levelingOrder, LevelingOrderMixin);
         tinsert(self.levelingOrderButtons, levelingOrder);
 
         levelingOrder:SetAllPoints();
         levelingOrder:SetFrameLevel(1900);
-        levelingOrder.Text = levelingOrder:CreateFontString(nil, "OVERLAY", "SystemFont16_Shadow_ThickOutline");
-        levelingOrder.Text:SetPoint("BOTTOMRIGHT", talentButton, "TOPRIGHT", 2, -12);
+        levelingOrder.Text = levelingOrder:CreateFontString(nil, 'OVERLAY', 'SystemFont16_Shadow_ThickOutline');
+        levelingOrder.Text:SetPoint('BOTTOMRIGHT', talentButton, 'TOPRIGHT', 2, -12);
         levelingOrder.Text:SetTextColor(1, 1, 1);
-        levelingOrder.Text:SetJustifyH("RIGHT");
+        levelingOrder.Text:SetJustifyH('RIGHT');
 
         levelingOrder:SetOrder({});
     end
@@ -826,17 +831,17 @@ do
     --- @type TalentViewerImportExport
     local ImportExport = ns.ImportExport
 
-    StaticPopupDialogs["TalentViewerExportDialog"] = {
-        text = L["CTRL-C to copy"],
+    StaticPopupDialogs['TalentViewerExportDialog'] = {
+        text = L['CTRL-C to copy'],
         button1 = CLOSE,
         OnShow = function(dialog, data)
             local function HidePopup()
                 dialog:Hide();
             end
-            dialog.editBox:SetScript("OnEscapePressed", HidePopup);
-            dialog.editBox:SetScript("OnEnterPressed", HidePopup);
-            dialog.editBox:SetScript("OnKeyUp", function(_, key)
-                if IsControlKeyDown() and key == "C" then
+            dialog.editBox:SetScript('OnEscapePressed', HidePopup);
+            dialog.editBox:SetScript('OnEnterPressed', HidePopup);
+            dialog.editBox:SetScript('OnKeyUp', function(_, key)
+                if IsControlKeyDown() and key == 'C' then
                     HidePopup();
                 end
             end);
@@ -851,7 +856,7 @@ do
         hideOnEscape = true,
         preferredIndex = 3,
     };
-    StaticPopupDialogs["TalentViewerImportDialog"] = {
+    StaticPopupDialogs['TalentViewerImportDialog'] = {
         text = HUD_CLASS_TALENTS_IMPORT_DIALOG_TITLE,
         button1 = OKAY,
         button2 = CLOSE,
@@ -866,8 +871,8 @@ do
             local function OnEnter()
                 dialog.button1:Click();
             end
-            dialog.editBox:SetScript("OnEscapePressed", HidePopup);
-            dialog.editBox:SetScript("OnEnterPressed", OnEnter);
+            dialog.editBox:SetScript('OnEscapePressed', HidePopup);
+            dialog.editBox:SetScript('OnEnterPressed', OnEnter);
         end,
         hasEditBox = true,
         editBoxWidth = 240,
@@ -878,10 +883,10 @@ do
     };
 
     function TalentViewer_ImportButton_OnClick()
-        StaticPopup_Show("TalentViewerImportDialog");
+        StaticPopup_Show('TalentViewerImportDialog');
     end
     function TalentViewer_ExportButton_OnClick()
         local exportString = ImportExport:GetLoadoutExportString();
-        StaticPopup_Show("TalentViewerExportDialog", nil, nil, exportString);
+        StaticPopup_Show('TalentViewerExportDialog', nil, nil, exportString);
     end
 end
