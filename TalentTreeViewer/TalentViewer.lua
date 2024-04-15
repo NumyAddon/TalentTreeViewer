@@ -14,10 +14,12 @@ local TalentViewer = {
 	purchasedRanks = {},
 	selectedEntries = {},
 	currencySpending = {},
+	_ns = ns,
 }
 _G.TalentViewer = TalentViewer
 
 ns.ImportExport = {}
+ns.IcyVeinsImport = {}
 ns.TalentViewer = TalentViewer
 
 --- @class TalentViewer_Cache
@@ -224,14 +226,20 @@ end
 
 function TalentViewer:ImportLoadout(importString)
 	--- @type TalentViewerImportExport
-	local ImportExport = ns.ImportExport
+	local ImportExport = ns.ImportExport;
+	--- @type TalentViewerIcyVeinsImport
+	local IcyVeinsImport = ns.IcyVeinsImport;
 
 	if TalentViewer_DF:IsShown() then
-		TalentViewer_DF:Raise()
+		TalentViewer_DF:Raise();
 	else
-		TalentViewer:ToggleTalentView()
+		TalentViewer:ToggleTalentView();
 	end
-	ImportExport:ImportLoadout(importString)
+	if IcyVeinsImport:IsTalentUrl(importString) then
+        IcyVeinsImport:ImportUrl(importString);
+    else
+        ImportExport:ImportLoadout(importString);
+    end
 end
 
 function TalentViewer:ExportLoadout()
@@ -290,6 +298,9 @@ function TalentViewer:InitFrame()
 	self:InitLevelingBuildUIs();
 end
 
+--- Reset the talent tree, and select the specified spec
+--- @param classId number
+--- @param specId number
 function TalentViewer:SelectSpec(classId, specId)
 	assert(type(classId) == 'number', 'classId must be a number')
 	assert(type(specId) == 'number', 'specId must be a number')
@@ -489,6 +500,8 @@ function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
 	self:GetTalentFrame():SetLevelingBuildID(buildID);
 	self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
     self.recordingInfo.active = true;
+
+    self:GetTalentFrame().LevelingBuildLevelSlider:SetValue(level);
 end
 
 --- @return table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
@@ -557,7 +570,8 @@ function TalentViewer:ClearLevelingBuild()
     end
     self.levelingBuilds[self.selectedSpecId] = self.levelingBuilds[self.selectedSpecId] or {};
     if
-        self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID] == self.recordingInfo.entries
+        self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID]
+        and self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID].entries == self.recordingInfo.entries
         and not next(self.recordingInfo.entries[1])
         and not next(self.recordingInfo.entries[2])
     then -- the build is already empty, no point resetting it
@@ -646,23 +660,31 @@ function TalentViewer:InitLevelingBuildUIs()
     };
     local currentValue = 9;
     slider:Init(currentValue, minValue, maxValue, steps, formatters);
-    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnValueChanged, function(_, value)
-        if value ~= currentValue then
-            currentValue = value;
-            self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), value, true);
-            self:StopRecordingLevelingBuild();
-        end
-    end);
-    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractStart, function()
+
+    local callingFromSlider = false;
+    local function onValueChange()
+        local value = slider:GetValue();
+        if callingFromSlider or value == currentValue then return; end
+        currentValue = value;
+        callingFromSlider = true;
+        self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), value, true);
+        callingFromSlider = false;
+        self:StopRecordingLevelingBuild();
+    end
+
+    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnDragStop, onValueChange);
+    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnStepperClicked, onValueChange);
+    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnEnter, function()
         GameTooltip:SetOwner(slider, 'ANCHOR_RIGHT', 0, 0);
         GameTooltip:SetText(L['Leveling build']);
         GameTooltip:AddLine(L['Select the level to apply the leveling build to']);
         GameTooltip:AddLine(L['This will lag out your game!']);
         GameTooltip:Show();
     end);
-    slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnInteractEnd, function()
+    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnLeave, function()
         GameTooltip:Hide();
     end);
+
 
     local dropDownButton = self:GetTalentFrame().LevelingBuildDropDownButton;
     dropDownButton:HookScript('OnEnter', function()

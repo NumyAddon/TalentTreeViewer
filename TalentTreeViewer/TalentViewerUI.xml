@@ -399,7 +399,7 @@
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="RIGHT" x="-30" y="3"/>
                 </Anchors>
             </Button>
-            <Slider parentKey="LevelingBuildLevelSlider" inherits="MinimalSliderWithSteppersTemplate" hidden="false">
+            <Slider parentKey="LevelingBuildLevelSlider" inherits="MinimalSliderWithSteppersTemplate" mixin="TalentViewer_LevelingSliderMixin" hidden="false">
                 <Size x="150" y="25"/>
                 <Anchors>
                     <Anchor point="TOPRIGHT" relativeKey="$parent.LevelingBuildDropDownButton" relativePoint="BOTTOMRIGHT" x="0" y="-3"/>

@@ -68,6 +68,34 @@ do
     end
 end
 
+TalentViewer_LevelingSliderMixin = CreateFromMixins(MinimalSliderWithSteppersMixin);
+local LevelingSliderMixin = TalentViewer_LevelingSliderMixin;
+LevelingSliderMixin:GenerateCallbackEvents(
+    {
+        'OnDragStop',
+        'OnStepperClicked',
+        'OnEnter',
+        'OnLeave',
+    }
+);
+
+function LevelingSliderMixin:GetValue()
+    return self.Slider:GetValue();
+end
+
+function LevelingSliderMixin:OnStepperClicked(...)
+    MinimalSliderWithSteppersMixin.OnStepperClicked(self, ...);
+    self:TriggerEvent(self.Event.OnStepperClicked, ...);
+end
+
+function LevelingSliderMixin:OnLoad()
+    MinimalSliderWithSteppersMixin.OnLoad(self);
+
+    self.Slider:HookScript('OnEnter', function() self:TriggerEvent(self.Event.OnEnter); end);
+    self.Slider:HookScript('OnLeave', function() self:TriggerEvent(self.Event.OnLeave); end);
+    self.Slider:HookScript('OnMouseUp', function() self:TriggerEvent(self.Event.OnDragStop); end);
+end
+
 --- @class TalentViewer_LevelingOrderFrame
 local LevelingOrderMixin = {};
 --- @param order number[]
@@ -857,11 +885,11 @@ do
         preferredIndex = 3,
     };
     StaticPopupDialogs['TalentViewerImportDialog'] = {
-        text = HUD_CLASS_TALENTS_IMPORT_DIALOG_TITLE,
+        text = HUD_CLASS_TALENTS_IMPORT_DIALOG_TITLE .. '\n' .. L['Icy-veins calculator links are also supported!'],
         button1 = OKAY,
         button2 = CLOSE,
         OnAccept = function(dialog)
-            ImportExport:ImportLoadout(dialog.editBox:GetText());
+            TalentViewer:ImportLoadout(dialog.editBox:GetText());
             dialog:Hide();
         end,
         OnShow = function(dialog)
