@@ -42,28 +42,8 @@ function IcyVeinsImport:ImportUrl(fullUrl)
     TalentViewer:SelectSpec(classID, specID); -- also clears the viewer's state
     TalentViewer:StartRecordingLevelingBuild(); -- just to be sure ;)
 
-    if true then
-        TalentViewer:ImportLevelingBuild(levelingOrder);
-        TalentViewer:ApplyLevelingBuild(TalentViewer:GetCurrentLevelingBuildID(), ns.MAX_LEVEL, true);
-        return
-    end
-
-    local backup = TalentViewer.db.ignoreRestrictions;
-    TalentViewer.db.ignoreRestrictions = true;
-
-    local talentFrame = TalentViewer:GetTalentFrame();
-    for level = 10, 20 or ns.MAX_LEVEL do
-        local entry = levelingOrder[level];
-        if entry then
-            if entry.entryID then
-                talentFrame:SetSelection(entry.nodeID, entry.entryID);
-            else
-                talentFrame:PurchaseRank(entry.nodeID);
-            end
-        end
-    end
-
-    TalentViewer.db.ignoreRestrictions = backup;
+    TalentViewer:ImportLevelingBuild(levelingOrder);
+    TalentViewer:ApplyLevelingBuild(TalentViewer:GetCurrentLevelingBuildID(), ns.MAX_LEVEL, true);
 end
 
 --- @param url string
