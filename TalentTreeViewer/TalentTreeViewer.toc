@@ -15,4 +15,5 @@ locale\locale.xml
 TalentViewer.lua
 TalentViewerUIMixin.lua
 ImportExport.lua
+IcyVeinsImport.lua
 TalentViewerUI.xml
