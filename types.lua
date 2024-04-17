@@ -1,7 +1,7 @@
 --- inherits ClassTalentTalentsTabMixin
 --- @class TalentViewerUIMixin: FRAME
 --- @field EnumerateAllTalentButtons fun(): fun(): TalentViewer_TalentButtonMixin
---- @field GetTalentButtonByNodeID fun(self: TalentViewerUIMixin, nodeID: number): TalentViewer_TalentButtonMixin
+--- @field GetTalentButtonByNodeID fun(self: TalentViewerUIMixin, nodeID: number): nil|TalentViewer_TalentButtonMixin
 --- @field StartRecordingButton BUTTON
 --- @field StopRecordingButton BUTTON
 --- @field LevelingBuildLevelSlider SLIDER

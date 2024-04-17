@@ -11,6 +11,8 @@ local skillMappings = tInvert{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 
 --- @type LibTalentTree-1.0
 local libTT = LibStub('LibTalentTree-1.0');
 
+local L = LibStub('AceLocale-3.0'):GetLocale(name)
+
 --- @param text string
 --- @return boolean
 function IcyVeinsImport:IsTalentUrl(text)
@@ -104,16 +106,31 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
             local mappingIndex = skillMappings[char];
 
             local nodeID = nodes[mappingIndex];
-            local entryIndex = nextChar == '1' and 2 or 1;
-            local nodeInfo = libTT:GetNodeInfo(nodeID);
-            local entry = nodeInfo.type == Enum.TraitNodeType.Selection and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
-            rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
+            if not nodeID then
+                print(L['Error while importing IcyVeins URL: Could not find node for mapping index'], mappingIndex);
+                if DevTool and DevTool.AddData then
+                    DevTool:AddData({
+                        mappingIndex = mappingIndex,
+                        char = char,
+                        nextChar = nextChar,
+                        index = index,
+                        dataSegment = dataSegment,
+                        splitDataSegment = splitDataSegment,
+                        nodes = nodes,
+                    }, 'Error while importing IcyVeins URL: Could not find node for mapping index')
+                end
+            else
+                local entryIndex = nextChar == '1' and 2 or 1;
+                local nodeInfo = libTT:GetNodeInfo(nodeID);
+                local entry = nodeInfo.type == Enum.TraitNodeType.Selection and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
+                rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
 
-            levelingOrder[level] = {
-                nodeID = nodeID,
-                entryID = entry,
-                targetRank = rankByNodeID[nodeID],
-            };
+                levelingOrder[level] = {
+                    nodeID = nodeID,
+                    entryID = entry,
+                    targetRank = rankByNodeID[nodeID],
+                };
+            end
         end
     end
 end
@@ -131,10 +148,12 @@ function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID)
 
     for _, nodeID in ipairs(nodes or {}) do
         local nodeInfo = libTT:GetNodeInfo(nodeID);
-        if nodeInfo.isClassNode then
-            table.insert(classNodes, nodeID);
-        elseif libTT:IsNodeVisibleForSpec(specID, nodeID) and nodeInfo.maxRanks > 0 then
-            table.insert(specNodes, nodeID);
+        if libTT:IsNodeVisibleForSpec(specID, nodeID) and nodeInfo.maxRanks > 0 then
+            if nodeInfo.isClassNode then
+                table.insert(classNodes, nodeID);
+            else
+                table.insert(specNodes, nodeID);
+            end
         end
     end
 

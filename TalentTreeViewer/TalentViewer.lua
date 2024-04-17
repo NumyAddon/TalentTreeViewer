@@ -609,7 +609,19 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
     local baseLevel = self.recordingInfo.startingOffset[indexKey];
     local level = baseLevel + (#entries * 2);
 
-    self:GetTalentFrame():GetTalentButtonByNodeID(nodeID).LevelingOrder:AppendToOrder(level);
+    local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
+    if not button then
+        if DevTool and DevTool.AddData then
+            DevTool:AddData({
+                entry = entries[#entries],
+                nodeID = nodeID,
+                level = level,
+                nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
+            }, 'could not find button for NodeID when recording');
+        end
+        return
+    end
+    button.LevelingOrder:AppendToOrder(level);
 end
 
 function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
@@ -623,7 +635,18 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
             removed = i;
             table.remove(entries, i);
             self.recordingInfo.currentIndex[indexKey] = #entries;
-            self:GetTalentFrame():GetTalentButtonByNodeID(nodeID).LevelingOrder:RemoveLastOrder();
+            local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
+            if not button then
+                if DevTool and DevTool.AddData then
+                    DevTool:AddData({
+                        entry = entry,
+                        nodeID = nodeID,
+                        nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
+                    }, 'could not find button for NodeID when removing');
+                end
+            else
+                button.LevelingOrder:RemoveLastOrder();
+            end
             break;
         end
     end
@@ -632,7 +655,18 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
             local entry = entries[i];
             local baseLevel = self.recordingInfo.startingOffset[indexKey];
             local level = baseLevel + (i * 2);
-            self:GetTalentFrame():GetTalentButtonByNodeID(entry.nodeID).LevelingOrder:UpdateOrder(level + 2, level);
+            local button = self:GetTalentFrame():GetTalentButtonByNodeID(entry.nodeID);
+            if not button then
+                if DevTool and DevTool.AddData then
+                    DevTool:AddData({
+                        entry = entry,
+                        nodeID = nodeID,
+                        nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
+                    }, 'could not find button for NodeID when updating after removing');
+                end
+            else
+                button.LevelingOrder:UpdateOrder(level + 2, level);
+            end
         end
     end
 end

@@ -844,7 +844,18 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
         if entryInfo then
             local nodeID = entryInfo.nodeID;
             local button = self:GetTalentButtonByNodeID(nodeID);
-            button.LevelingOrder:AppendToOrder(entryLevel);
+            if not button then
+                if DevTool and DevTool.AddData then
+                    DevTool:AddData({
+                        entry = entryInfo,
+                        nodeID = nodeID,
+                        level = entryLevel,
+                        nodeInfo = self:GetAndCacheNodeInfo(nodeID),
+                    }, 'could not find button for NodeID when applying');
+                end
+            else
+                button.LevelingOrder:AppendToOrder(entryLevel);
+            end
         end
     end
 
