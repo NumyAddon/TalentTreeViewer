@@ -182,6 +182,10 @@ removeFromMixin('GetInspectUnit');
 removeFromMixin('OnEvent');
 removeFromMixin('RefreshConfigID');
 
+function TalentViewerUIMixin:IsChoiceNode(nodeInfo)
+    return nodeInfo.type == Enum.TraitNodeType.Selection;
+end
+
 --- @return TalentViewer
 function TalentViewerUIMixin:GetTalentViewer()
     return TalentViewer;
@@ -259,7 +263,7 @@ function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
             if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, incomingNodeId) end
             if nodeInfo and LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, incomingNodeId) then
                 local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, incomingNodeId)
-                local isChoiceNode = #nodeInfo.entryIDs > 1
+                local isChoiceNode = self:IsChoiceNode(nodeInfo)
                 local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(incomingNodeId) or nil
                 local activeRank = isGranted
                         and nodeInfo.maxRanks
@@ -306,7 +310,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         end
 
         local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
-        local isChoiceNode = #nodeInfo.entryIDs > 1
+        local isChoiceNode = self:IsChoiceNode(nodeInfo)
         local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
 
         local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID)
@@ -615,38 +619,41 @@ function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
 end
 
 function TalentViewerUIMixin:ProcessGateMandatedRefunds()
-    if TalentViewer.db.ignoreRestrictions then return end
+    if TalentViewer.db.ignoreRestrictions then return; end
+    local backup = TalentViewer.db.ignoreRestrictions;
+    TalentViewer.db.ignoreRestrictions = true;
 
-    self:UpdateNodeGateMapping()
-    local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate()
+    self:UpdateNodeGateMapping();
+    local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate();
     local gates = LibTalentTree:GetGates(self:GetSpecID());
 
     for _, gateInfo in ipairs(gates) do
-        local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0
+        local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0;
         if eligibleSpending < gateInfo.spentAmountRequired then
             for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
-                local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
+                local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
                 if nodeInfo.ranksPurchased > 0 then
-                    if #nodeInfo.entryIDs > 1 then
-                        self:SetSelection(nodeID, nil)
+                    if self:IsChoiceNode(nodeInfo) then
+                        self:SetSelection(nodeID, nil);
                     else
-                        self:SetRank(nodeID, 0)
+                        self:SetRank(nodeID, 0);
                     end
                 end
             end
         end
     end
+    TalentViewer.db.ignoreRestrictions = backup;
 end
 
 function TalentViewerUIMixin:UpdateNodeGateMapping()
-    if self.eligibleNodesPerGate and self.nodesPerGate then return end
-    self.eligibleNodesPerGate = {}
-    self.nodesPerGate = {}
+    if self.eligibleNodesPerGate and self.nodesPerGate then return; end
+    self.eligibleNodesPerGate = {};
+    self.nodesPerGate = {};
     local gates = LibTalentTree:GetGates(self:GetSpecID());
 
     for _, gateInfo in ipairs(gates) do
-        self.eligibleNodesPerGate[gateInfo.conditionID] = self.eligibleNodesPerGate[gateInfo.conditionID] or {}
-        self.nodesPerGate[gateInfo.conditionID] = self.nodesPerGate[gateInfo.conditionID] or {}
+        self.eligibleNodesPerGate[gateInfo.conditionID] = self.eligibleNodesPerGate[gateInfo.conditionID] or {};
+        self.nodesPerGate[gateInfo.conditionID] = self.nodesPerGate[gateInfo.conditionID] or {};
 
         for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
             local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
@@ -662,25 +669,26 @@ function TalentViewerUIMixin:UpdateNodeGateMapping()
                     end
                 end
                 if conditionMatches then
-                    table.insert(self.nodesPerGate[gateInfo.conditionID], nodeID)
+                    table.insert(self.nodesPerGate[gateInfo.conditionID], nodeID);
                 else
-                    table.insert(self.eligibleNodesPerGate[gateInfo.conditionID], nodeID)
+                    table.insert(self.eligibleNodesPerGate[gateInfo.conditionID], nodeID);
                 end
             end
         end
     end
 end
 
+--- @return table<number, number> # [conditionID] = eligibleSpending
 function TalentViewerUIMixin:GetEligibleSpendingPerGate()
     local spendingPerGate = {}
     for condID, nodeIDs in pairs(self.eligibleNodesPerGate) do
-        spendingPerGate[condID] = 0
+        spendingPerGate[condID] = 0;
         for _, nodeID in ipairs(nodeIDs) do
             local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
             local costInfo = self:GetNodeCost(nodeID);
             local amount = costInfo[1].amount;
             if nodeInfo.ranksPurchased > 0 then
-                spendingPerGate[condID] = spendingPerGate[condID] + (amount * nodeInfo.ranksPurchased)
+                spendingPerGate[condID] = spendingPerGate[condID] + (amount * nodeInfo.ranksPurchased);
             end
         end
     end
