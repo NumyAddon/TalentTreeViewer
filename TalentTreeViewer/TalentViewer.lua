@@ -401,7 +401,7 @@ function TalentViewer:InitDropDown()
 	if self.dropDownButton then return end
 	self.dropDownButton, self.dropDown = self:MakeDropDownButton()
 
-	if IsAddOnLoaded('ElvUI') then
+	if C_AddOns.IsAddOnLoaded('ElvUI') then
 		self:ApplyElvUISkin()
 	end
 
@@ -749,7 +749,7 @@ function TalentViewer:InitLevelingBuildUIs()
 	        notClickable = true,
             notCheckable = true,
 	    });
-	    if (not IsAddOnLoaded('TalentLoadoutManager')) then
+	    if (not C_AddOns.IsAddOnLoaded('TalentLoadoutManager')) then
             table.insert(menu, {
                 text = L['Click to download TalentLoadoutManager'],
                 notCheckable = true,

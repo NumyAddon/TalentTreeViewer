@@ -14,7 +14,7 @@ frame:RegisterEvent('ADDON_LOADED')
 function TVLoader:ADDON_LOADED(_, addonName)
     if addonName == name then
         TVLoader:OnInitialize()
-        if(IsAddOnLoaded('BlizzMove')) then TVLoader:RegisterToBlizzMove() end
+        if(C_AddOns.IsAddOnLoaded('BlizzMove')) then TVLoader:RegisterToBlizzMove() end
     end
     if addonName == 'Blizzard_ClassTalentUI' then
         TVLoader:AddButtonToBlizzardTalentFrame()
@@ -128,7 +128,7 @@ function TVLoader:ToggleTalentView()
 end
 
 function TVLoader:LoadTV()
-    LoadAddOn('TalentTreeViewer')
+    C_AddOns.LoadAddOn('TalentTreeViewer')
 end
 
 --- @return TalentViewer
