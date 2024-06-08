@@ -1,6 +1,6 @@
 ## Interface: @toc-version-retail@
-## Title: TalentTree Viewer (UI)
-## Notes: View any spec's talent trees from any character
+## Title: TalentTree Viewer (DF UI)
+## Notes: View any spec's talent trees from any character. This module is only for Dragonflight!
 ## Author: Numy
 ## IconTexture: Interface\Addons\TalentTreeViewer\media\icon
 ## Version: @project-version@

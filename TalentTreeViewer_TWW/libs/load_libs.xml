@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<script file="LibStub\LibStub.lua"/>
+	<Include file="CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
+	<Include file="LibTalentTree-1.0\LibTalentTree-1.0.xml"/>
+	<Include file="LibUIDropDownMenu\LibUIDropDownMenu.xml"/>
+	<Include file="AceLocale-3.0\AceLocale-3.0.xml"/>
+</Ui>

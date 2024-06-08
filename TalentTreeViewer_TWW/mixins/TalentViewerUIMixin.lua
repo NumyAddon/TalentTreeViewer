@@ -1,10 +1,12 @@
 local name, ns = ...;
 
---- @type TalentViewer
+ns.mixins = ns.mixins or {};
+
+--- @type TalentViewerTWW
 local TalentViewer = ns.TalentViewer;
 if not TalentViewer then return; end
 
---- @type TalentViewer_Cache
+--- @type TalentViewer_CacheTWW
 local tvCache = TalentViewer.cache;
 
 ---@type LibTalentTree-1.0
@@ -68,125 +70,31 @@ do
     end
 end
 
-TalentViewer_LevelingSliderMixin = CreateFromMixins(MinimalSliderWithSteppersMixin);
-local LevelingSliderMixin = TalentViewer_LevelingSliderMixin;
-LevelingSliderMixin:GenerateCallbackEvents(
-    {
-        'OnDragStop',
-        'OnStepperClicked',
-        'OnEnter',
-        'OnLeave',
-    }
-);
 
-function LevelingSliderMixin:GetValue()
-    return self.Slider:GetValue();
-end
+local parentMixin = ClassTalentsFrameMixin;
+--- @class TalentViewerUIMixinTWW
+TalentViewer_ClassTalentsFrameMixin = deepCopy(parentMixin);
 
-function LevelingSliderMixin:OnStepperClicked(...)
-    MinimalSliderWithSteppersMixin.OnStepperClicked(self, ...);
-    self:TriggerEvent(self.Event.OnStepperClicked, ...);
-end
-
-function LevelingSliderMixin:OnLoad()
-    MinimalSliderWithSteppersMixin.OnLoad(self);
-
-    self.Slider:HookScript('OnEnter', function() self:TriggerEvent(self.Event.OnEnter); end);
-    self.Slider:HookScript('OnLeave', function() self:TriggerEvent(self.Event.OnLeave); end);
-    self.Slider:HookScript('OnMouseUp', function() self:TriggerEvent(self.Event.OnDragStop); end);
-end
-
---- @class TalentViewer_LevelingOrderFrame
-local LevelingOrderMixin = {};
---- @param order number[]
-function LevelingOrderMixin:SetOrder(order)
-    self.order = CopyTable(order);
-    self:UpdateText();
-end
---- @param level number
-function LevelingOrderMixin:AppendToOrder(level)
-    table.insert(self.order, level);
-    self:UpdateText();
-end
-function LevelingOrderMixin:RemoveLastOrder()
-    for i = #self.order, 1, -1 do
-        if self.order[i] then
-            table.remove(self.order, i);
-            break;
-        end
-    end
-    self:UpdateText();
-end
-function LevelingOrderMixin:UpdateOrder(oldLevel, newLevel)
-    for i, level in ipairs(self.order) do
-        if level == oldLevel then
-            self.order[i] = newLevel;
-            break;
-        end
-    end
-    self:UpdateText();
-end
-function LevelingOrderMixin:UpdateText()
-    self.Text:SetText(table.concat(self.order, ' '));
-end
---- @return number[]
-function LevelingOrderMixin:GetOrder()
-    return CopyTable(self.order);
-end
-
---- @class TalentViewer_TalentButtonMixin
-local TalentButtonMixin = {};
-function TalentButtonMixin:OnClick(button)
-    EventRegistry:TriggerEvent('TalentButton.OnClick', self, button);
-
-    if button == 'LeftButton' and self:CanPurchaseRank() then
-        self:PurchaseRank();
-    elseif button == 'RightButton' and self:CanRefundRank() then
-        self:RefundRank();
-    end
-end
-function TalentButtonMixin:PurchaseRank()
-    --- @type TalentViewerUIMixin
-    local talentFrame = self.talentFrame;
-    self:PlaySelectSound();
-    talentFrame:PurchaseRank(self:GetNodeID());
-end
-function TalentButtonMixin:RefundRank()
-    --- @type TalentViewerUIMixin
-    local talentFrame = self.talentFrame;
-    self:PlayDeselectSound();
-    talentFrame:RefundRank(self:GetNodeID());
-end
-function TalentButtonMixin:ShowActionBarHighlights()
-    TalentViewer:SetActionBarHighlights(self, true);
-end
-function TalentButtonMixin:HideActionBarHighlights()
-    TalentViewer:SetActionBarHighlights(self, false);
-end
-
-local parentMixin = ClassTalentTalentsTabMixin;
---- @class TalentViewerUIMixin
-TalentViewer_ClassTalentTalentsTabMixin = deepCopy(parentMixin);
-
---- @class TalentViewerUIMixin
-local TalentViewerUIMixin = TalentViewer_ClassTalentTalentsTabMixin;
---- @type TalentViewer_LevelingOrderFrame[]
+--- @class TalentViewerUIMixinTWW
+local TalentViewerUIMixin = TalentViewer_ClassTalentsFrameMixin;
+--- @type TalentViewer_LevelingOrderFrameTWW[]
 TalentViewerUIMixin.levelingOrderButtons = {};
 TalentViewerUIMixin.currentOrder = 0;
 
 local function removeFromMixin(method) TalentViewerUIMixin[method] = function() end; end
 removeFromMixin('UpdateConfigButtonsState');
 removeFromMixin('RefreshLoadoutOptions');
-removeFromMixin('InitializeLoadoutDropDown');
+removeFromMixin('InitializeLoadSystem');
 removeFromMixin('GetInspectUnit');
 removeFromMixin('OnEvent');
 removeFromMixin('RefreshConfigID');
+removeFromMixin('UpdateInspecting');
 
 function TalentViewerUIMixin:IsChoiceNode(nodeInfo)
     return nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection;
 end
 
---- @return TalentViewer
+--- @return TalentViewerTWW
 function TalentViewerUIMixin:GetTalentViewer()
     return TalentViewer;
 end
@@ -201,7 +109,7 @@ function TalentViewerUIMixin:GetConfigID()
     return C_ClassTalents.GetActiveConfigID() or nil;
 end
 function TalentViewerUIMixin:GetClassID()
-    return TalentViewer.selectedClassId;
+    return self:GetTalentViewer().selectedClassId;
 end
 function TalentViewerUIMixin:GetClassName()
     local classID = self:GetClassID();
@@ -223,12 +131,15 @@ end
 function TalentViewerUIMixin:IsInspecting()
     return false;
 end
+function TalentViewerUIMixin:IsPreviewingSubTree()
+    return false;
+end
 
 function TalentViewerUIMixin:ShowSelections(...)
     parentMixin.ShowSelections(self, ...);
     for _, button in ipairs(self.SelectionChoiceFrame.selectionFrameArray) do
-        button.ShowActionBarHighlights = TalentButtonMixin.ShowActionBarHighlights;
-        button.HideActionBarHighlights = TalentButtonMixin.HideActionBarHighlights;
+        button.ShowActionBarHighlights = ns.mixins.TalentButtonMixin.ShowActionBarHighlights;
+        button.HideActionBarHighlights = ns.mixins.TalentButtonMixin.HideActionBarHighlights;
     end
 end
 
@@ -301,44 +212,48 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
                         nodeInfo = nodeInfo,
                     },
                     'outdated warning trigger, nodeID ' .. nodeID
-                )
+                );
             end
             if not nodeInfo then
-                error('no nodeinfo for nodeID '.. nodeID..' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID())
+                error('no nodeinfo for nodeID '.. nodeID..' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID());
             end
             return nodeInfo;
         end
 
-        local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID)
-        local isChoiceNode = self:IsChoiceNode(nodeInfo)
-        local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil
+        local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, nodeID);
+        local isChoiceNode = self:IsChoiceNode(nodeInfo);
+        local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(nodeID) or nil;
 
-        local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID)
-        local meetsGateRequirements = true
+        local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID);
+        local meetsGateRequirements = true;
         if not TalentViewer.db.ignoreRestrictions then
             for _, conditionId in ipairs(nodeInfo.conditionIDs) do
-                local condInfo = self:GetAndCacheCondInfo(conditionId)
-                if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false end
+                local condInfo = self:GetAndCacheCondInfo(conditionId);
+                if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false; end
             end
         end
 
-        local isAvailable = meetsGateRequirements
+        local isAvailable = meetsGateRequirements;
 
         nodeInfo.activeRank = isGranted
             and nodeInfo.maxRanks
-            or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID))
-        nodeInfo.currentRank = nodeInfo.activeRank
-        nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0
-        nodeInfo.isAvailable = isAvailable
+            or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID));
+        nodeInfo.currentRank = nodeInfo.activeRank;
+        nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0;
+        nodeInfo.isAvailable = isAvailable;
         nodeInfo.canPurchaseRank = isAvailable and meetsEdgeRequirements and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
-        nodeInfo.canRefundRank = not isGranted
-        nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements
+        nodeInfo.canRefundRank = not isGranted;
+        nodeInfo.meetsEdgeRequirements = meetsEdgeRequirements;
 
         for _, edge in ipairs(nodeInfo.visibleEdges) do
-            edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks
+            edge.isActive = nodeInfo.activeRank == nodeInfo.maxRanks;
         end
 
-        if nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection then
+        if isChoiceNode then
+            if nodeInfo.type == Enum.TraitNodeType.SubTreeSelection then
+                nodeInfo.type = Enum.TraitNodeType.Selection;
+                nodeInfo.isSubTreeSelection = true;
+            end
             local entryIndex
             for i, entryId in ipairs(nodeInfo.entryIDs) do
                 if entryId == selectedEntryId then
@@ -353,6 +268,8 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         if not isChoiceNode and nodeInfo.activeRank ~= nodeInfo.maxRanks then
             nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1 }
         end
+        nodeInfo.tvSubTreeID = nodeInfo.subTreeID;
+        nodeInfo.subTreeID = nil;
 
         nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
 
@@ -436,16 +353,22 @@ function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
     return true;
 end
 
+function TalentViewerUIMixin:ShouldInstantiateNode(nodeID, nodeInfo)
+    -- by default, subtree selection nodes are not instantiated
+    return true;
+end
+
 function TalentViewerUIMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, offsetY, initFunction)
-    --- @class TalentViewer_TalentButtonMixin
+    --- @class TalentViewer_TalentButtonMixinTWW
     local talentButton = parentMixin.AcquireTalentButton(self, nodeInfo, talentType, offsetX, offsetY, initFunction);
     talentButton.talentFrame = self;
-    Mixin(talentButton, TalentButtonMixin);
+    Mixin(talentButton, ns.mixins.TalentButtonMixin);
     if not talentButton.LevelingOrder then
         ---@diagnostic disable-next-line: assign-type-mismatch
         talentButton.LevelingOrder = CreateFrame('Frame', nil, talentButton);
+        --- @class TalentViewer_LevelingOrderFrameTWW
         local levelingOrder = talentButton.LevelingOrder;
-        Mixin(levelingOrder, LevelingOrderMixin);
+        Mixin(levelingOrder, ns.mixins.LevelingOrderMixin);
         tinsert(self.levelingOrderButtons, levelingOrder);
 
         levelingOrder:SetAllPoints();
@@ -707,6 +630,15 @@ function TalentViewerUIMixin:RefreshCurrencyDisplay()
 end
 
 function TalentViewerUIMixin:OnLoad()
+    local hiddenParent = CreateFrame('Frame');
+    hiddenParent:Hide();
+    self.HeroTalentsContainer:SetParent(hiddenParent);
+    self.HeroTalentsContainer.UpdateHeroTalentInfo = nop;
+    self.HeroTalentsContainer.UpdateHeroTalentButtonPosition = nop;
+    self.HeroTalentsContainer.UpdateHeroTalentCurrency = nop;
+    self.HeroTalentsContainer.UpdateSearchDisplay = nop;
+    self.HeroTalentsContainer.Init = nop;
+
     parentMixin.OnLoad(self);
 
     self.edgeRequirementsCache = {};
@@ -875,7 +807,7 @@ end
 --- Script handles
 ----------------------
 do
-    --- @type TalentViewerImportExport
+    --- @type TalentViewerImportExportTWW
     local ImportExport = ns.ImportExport
 
     StaticPopupDialogs['TalentViewerExportDialog'] = {

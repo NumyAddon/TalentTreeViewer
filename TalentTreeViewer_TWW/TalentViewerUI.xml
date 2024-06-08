@@ -4,7 +4,7 @@
 >
     <!-- copied and adapted from blizzard's code -->
 
-    <Frame name="TalentViewer_ClassTalentTalentsTabTemplate" mixin="TalentViewer_ClassTalentTalentsTabMixin" inherits="TalentFrameBaseTemplate" virtual="true">
+    <Frame name="TalentViewer_ClassTalentsFrameTemplate" mixin="TalentViewer_ClassTalentsFrameMixin" inherits="TalentFrameBaseTemplate" virtual="true">
         <KeyValues>
 			<KeyValue key="getTemplateType" value="ClassTalentUtil.GetTemplateForTalentType" type="global"/>
             <KeyValue key="getSpecializedMixin" value="ClassTalentUtil.GetSpecializedMixin" type="global"/>
@@ -14,7 +14,7 @@
             <KeyValue key="leftPadding" value="0" type="number"/>
             <KeyValue key="bottomPadding" value="82" type="number"/>
             <KeyValue key="rightPadding" value="0" type="number"/>
-            <KeyValue key="basePanOffsetX" value="4" type="number"/>
+			<KeyValue key="basePanOffsetX" value="49" type="number"/>
             <KeyValue key="basePanOffsetY" value="-30" type="number"/>
             <KeyValue key="maximumCommitTime" value="6" type="number"/>
 			<KeyValue key="disabledOverlayAlpha" value=".3" type="number"/>
@@ -25,11 +25,7 @@
         </KeyValues>
         <Layers>
 			<Layer level="BACKGROUND" textureSubLevel="0">
-				<Texture parentKey="BlackBG">
-					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.Background" relativePoint="TOPLEFT"/>
-						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.Background" relativePoint="BOTTOMRIGHT"/>
-					</Anchors>
+				<Texture parentKey="BlackBG" setAllPoints="true">
 					<Color r="0.0" g="0.0" b="0.0"/>
 				</Texture>
 			</Layer>
@@ -176,41 +172,49 @@
             </Layer>
         </Layers>
         <Frames>
+            <Frame parentKey="heroSpecSelectionDialog" hidden="true" mixin="TalentViewer_HeroSpecSelectionDialogMixin" setAllPoints="true">
+                <Frames>
+                    <Frame parentKey="DisabledOverlay" setAllPoints="true" hidden="true" />
+                </Frames>
+            </Frame>
+			<Frame parentKey="HeroTalentsContainer" inherits="HeroTalentsContainerTemplate" frameLevel="1010" hidden="true">
+				<Anchors>
+					<Anchor point="TOP" relativeKey="$parent.ButtonsParent" x="0"/>
+				</Anchors>
+			</Frame>
+
             <Frame parentKey="ClassCurrencyDisplay" inherits="ClassTalentCurrencyDisplayTemplate">
                 <Anchors>
-                    <Anchor point="CENTER" relativeKey="$parent" relativePoint="TOPLEFT" x="417" y="-48"/>
+					<Anchor point="CENTER" relativeKey="$parent" relativePoint="TOPLEFT" x="372" y="-48"/>
                 </Anchors>
             </Frame>
 
             <Frame parentKey="SpecCurrencyDisplay" inherits="ClassTalentCurrencyDisplayTemplate">
                 <Anchors>
-                    <Anchor point="CENTER" relativeKey="$parent" relativePoint="TOPRIGHT" x="-416" y="-48"/>
+					<Anchor point="CENTER" relativeKey="$parent" relativePoint="TOPRIGHT" x="-401" y="-48"/>
                 </Anchors>
             </Frame>
 
-            <Frame parentKey="LoadoutDropDown" inherits="DropDownLoadSystemTemplate" hidden="true">
-                <Size x="170" y="30"/>
+			<Frame parentKey="LoadSystem" inherits="DropdownLoadSystemTemplate" hidden="true">
+				<Size x="200" y="30"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="LEFT" x="48" y="0"/>
                 </Anchors>
             </Frame>
 
-            <Button parentKey="TV_DropDownButton" inherits="UIPanelButtonTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION">
+            <DropdownButton parentKey="TV_DropdownButton" inherits="WowStyle1DropdownTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION">
+                <KeyValues>
+                    <KeyValue key="menuPoint" type="string" value="BOTTOMLEFT"/>
+                    <KeyValue key="menuPointX" type="number" value="0"/>
+                    <KeyValue key="menuPointY" type="number" value="0"/>
+                    <KeyValue key="menuRelativePoint" type="string" value="TOPRIGHT"/>
+                </KeyValues>
+
                 <Size x="220" y="25"/>
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.BottomBar" relativePoint="LEFT" x="48" y="0"/>
                 </Anchors>
-                <Layers>
-                    <Layer level="ARTWORK">
-                        <Texture parentKey="Icon" file="Interface\ChatFrame\ChatFrameExpandArrow">
-                            <Size x="10" y="12"/>
-                            <Anchors>
-                                <Anchor point="RIGHT" x="-5" y="0"/>
-                            </Anchors>
-                        </Texture>
-                    </Layer>
-                </Layers>
-            </Button>
+            </DropdownButton>
             <Button parentKey="linkButton" inherits="UIPanelButtonNoTooltipTemplate, UIButtonTemplate" text="TALENT_FRAME_DROP_DOWN_EXPORT_CHAT_LINK">
                 <Size x="100" y="22"/>
                 <Anchors>
@@ -223,15 +227,15 @@
                 </Scripts>
             </Button>
 
-            <EditBox parentKey="SearchBox" inherits="TalentSearchBoxTemplate" hidden="false">
+            <EditBox parentKey="SearchBox" inherits="SpellSearchBoxTemplate" hidden="false">
 				<Size x="184" y="30"/>
                 <Anchors>
                     <!-- Re-anchored in code -->
-                    <Anchor point="LEFT" relativeKey="$parent.TV_DropDownButton" relativePoint="RIGHT" x="20" y="0"/>
+                    <Anchor point="LEFT" relativeKey="$parent.TV_DropdownButton" relativePoint="RIGHT" x="20" y="0"/>
                 </Anchors>
             </EditBox>
 
-            <Frame parentKey="SearchPreviewContainer" inherits="TalentSearchPreviewContainerTemplate" hidden="true" frameLevel="2000">
+			<Frame parentKey="SearchPreviewContainer" inherits="SpellSearchPreviewContainerTemplate" hidden="true" frameLevel="2000">
 				<Size x="176"/>
                 <Anchors>
 					<Anchor point="TOPRIGHT" relativeKey="$parent.SearchBox" relativePoint="BOTTOMRIGHT" x="-4" y="2"/>
@@ -302,8 +306,14 @@
                 </Scripts>
             </Button>
 
-            <DropDownToggleButton parentKey="ResetButton" inherits="IconButtonTemplate, DropDownMouseoverButtonTemplate">
+			<DropdownButton parentKey="ResetButton" inherits="IconButtonTemplate">
 			    <KeyValues>
+					<!--<KeyValue key="canOpenOnEnter" value="true" type="boolean"/>-->
+					<KeyValue key="menuPoint" type="string" value="BOTTOMLEFT"/>
+					<KeyValue key="menuPointX" type="number" value="0"/>
+					<KeyValue key="menuPointY" type="number" value="0"/>
+					<KeyValue key="menuRelativePoint" type="string" value="TOPRIGHT"/>
+
                     <KeyValue key="iconAtlas" value="talents-button-reset" type="string"/>
                     <KeyValue key="useAtlasSize" value="true" type="boolean"/>
                     <KeyValue key="useIconAsHighlight" value="true" type="boolean"/>
@@ -312,10 +322,7 @@
                 <Anchors>
                     <Anchor point="LEFT" relativeKey="$parent.ExportButton" relativePoint="RIGHT" x="14" y="0"/>
                 </Anchors>
-				<Frames>
-					<Frame parentKey="DropDown" inherits="UIDropDownMenuTemplate"/>
-				</Frames>
-			</DropDownToggleButton>
+			</DropdownButton>
             <CheckButton parentKey="IgnoreRestrictions" inherits="UICheckButtonTemplate">
                 <Size x="25" y="25"/>
                 <Anchors>
@@ -393,16 +400,22 @@
                     </OnClick>
                 </Scripts>
             </Button>
-            <Button parentKey="LevelingBuildDropDownButton" inherits="UIPanelButtonTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_RECORDED_BUILD">
+            <DropdownButton parentKey="LevelingBuildDropdownButton" inherits="WowStyle1DropdownTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_RECORDED_BUILD">
+                <KeyValues>
+                    <KeyValue key="menuPoint" type="string" value="BOTTOMLEFT"/>
+                    <KeyValue key="menuPointX" type="number" value="0"/>
+                    <KeyValue key="menuPointY" type="number" value="0"/>
+                    <KeyValue key="menuRelativePoint" type="string" value="TOPRIGHT"/>
+                </KeyValues>
                 <Size x="150" y="25"/>
                 <Anchors>
                     <Anchor point="RIGHT" relativeKey="$parent.BottomBar" relativePoint="RIGHT" x="-30" y="3"/>
                 </Anchors>
-            </Button>
+            </DropdownButton>
             <Slider parentKey="LevelingBuildLevelSlider" inherits="MinimalSliderWithSteppersTemplate" mixin="TalentViewer_LevelingSliderMixin" hidden="false">
                 <Size x="150" y="25"/>
                 <Anchors>
-                    <Anchor point="TOPRIGHT" relativeKey="$parent.LevelingBuildDropDownButton" relativePoint="BOTTOMRIGHT" x="0" y="-3"/>
+                    <Anchor point="TOPRIGHT" relativeKey="$parent.LevelingBuildDropdownButton" relativePoint="BOTTOMRIGHT" x="0" y="-3"/>
                 </Anchors>
             </Slider>
 
@@ -531,7 +544,7 @@
                     </Layer>
                 </Layers>
             </Frame>
-            <Frame parentKey="Talents" inherits="TalentViewer_ClassTalentTalentsTabTemplate" frameLevel="100">
+            <Frame parentKey="Talents" inherits="TalentViewer_ClassTalentsFrameTemplate" frameLevel="100">
                 <Size x="1612" y="856"/>
                 <Anchors>
                     <Anchor point="BOTTOM" x="0" y="4"/>

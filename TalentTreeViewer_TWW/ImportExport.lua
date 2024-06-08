@@ -1,9 +1,9 @@
 local name, ns = ...
 
---- @class TalentViewerImportExport
+--- @class TalentViewerImportExportTWW
 local ImportExport = ns.ImportExport
 
---- @type TalentViewer
+--- @type TalentViewerTWW
 local TalentViewer = ns.TalentViewer
 local L = LibStub("AceLocale-3.0"):GetLocale(name);
 

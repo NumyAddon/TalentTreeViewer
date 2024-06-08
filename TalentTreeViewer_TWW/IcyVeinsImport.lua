@@ -1,9 +1,9 @@
 local name, ns = ...
 
---- @class TalentViewerIcyVeinsImport
+--- @class TalentViewerIcyVeinsImportTWW
 local IcyVeinsImport = ns.IcyVeinsImport
 
---- @type TalentViewer
+--- @type TalentViewerTWW
 local TalentViewer = ns.TalentViewer
 
 local skillMappings = tInvert{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ă', 'ă', 'Â', 'â', 'Î', 'î', 'Ș', 'ș', 'Ț', 'ț', 'ë', 'é', 'ê', 'ï', 'ô', 'β', 'Γ', 'γ', 'Δ', 'δ', 'ε', 'ζ'};
