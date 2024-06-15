@@ -10,6 +10,10 @@ function TalentButtonMixin:IsInDeactivatedSubTree()
     return false;
 end
 
+function TalentButtonMixin:UpdateSubTreeActiveVisual(isActive)
+    self:SetAlpha(isActive and 1 or 0.5);
+end
+
 function TalentButtonMixin:OnClick(button)
     EventRegistry:TriggerEvent('TalentButton.OnClick', self, button);
 

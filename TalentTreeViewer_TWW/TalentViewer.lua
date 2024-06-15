@@ -596,8 +596,15 @@ end
 --- @param targetRank number
 --- @param entryID ?number
 function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
-    local isClassNode = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID).isClassNode;
-    local indexKey = isClassNode and 1 or 2;
+    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
+    if nodeInfo.isSubTreeSelection then
+        local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
+        button.LevelingOrder:SetOrder({71});
+        self.recordingInfo.selectedSubTreeEntryID = entryID;
+        return;
+    end;
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+    self.recordingInfo.entries[indexKey] = self.recordingInfo.entries[indexKey] or {};
     local entries = self.recordingInfo.entries[indexKey];
     table.insert(entries, {
         nodeID = nodeID,
@@ -605,8 +612,9 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
         entryID = entryID,
     });
     self.recordingInfo.currentIndex[indexKey] = #entries;
-    local baseLevel = self.recordingInfo.startingOffset[indexKey];
-    local level = baseLevel + (#entries * 2);
+    local baseLevel = self.recordingInfo.startingOffset[indexKey] or 70;
+    local multiplier = (indexKey <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
+    local level = baseLevel + (#entries * multiplier);
 
     local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
     if not button then

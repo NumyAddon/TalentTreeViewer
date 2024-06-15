@@ -321,9 +321,17 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
         local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
         local nodeInfo = LibTalentTree:GetLibNodeInfo(nodeID);
         local currencyID;
-        if nodeInfo and nodeInfo.isClassNode then
-            currencyID = currencyInfo[1].traitCurrencyID;
-        else
+        if nodeInfo then
+            if nodeInfo.subTreeID then
+                currencyID = currencyInfo[nodeInfo.subTreeID].traitCurrencyID;
+            elseif nodeInfo.isSubTreeSelection then
+                return {};
+            elseif nodeInfo.isClassNode then
+                currencyID = currencyInfo[1].traitCurrencyID;
+            else
+                currencyID = currencyInfo[2].traitCurrencyID;
+            end
+        else -- default to spec currency
             currencyID = currencyInfo[2].traitCurrencyID;
         end
 
@@ -380,13 +388,32 @@ function TalentViewerUIMixin:AcquireTalentButton(nodeInfo, talentType, offsetX, 
 
         levelingOrder:SetOrder({});
     end
+    local subTreeID = nodeInfo.tvSubTreeID or nodeInfo.subTreeID;
+    if subTreeID then
+        local isActive = self:GetActiveSubTreeID() == subTreeID;
+        talentButton:UpdateSubTreeActiveVisual(isActive);
+    end
 
     return talentButton;
 end
 
+function TalentViewerUIMixin:UpdateTalentButtonPosition(talentButton)
+    parentMixin.UpdateTalentButtonPosition(self, talentButton);
+    local nodeInfo = talentButton:GetNodeInfo();
+    if nodeInfo.isSubTreeSelection then
+        local posY = 3900; -- todo: move to constant
+        local posX = 7200; -- todo: move to constant
+		TalentButtonUtil.ApplyPosition(talentButton, self, posX, posY);
+    end
+end
+
 function TalentViewerUIMixin:SetSelection(nodeID, entryID)
+    local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
     TalentViewer:SetSelection(nodeID, entryID);
     self:AfterRankChange(nodeID);
+    if nodeInfo.isSubTreeSelection then
+        self:SelectSubTree(entryID and self:GetAndCacheEntryInfo(entryID).subTreeID);
+    end
 end
 
 function TalentViewerUIMixin:PurchaseRank(nodeID)
@@ -487,24 +514,34 @@ end
 function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
     local function GetTreeCurrencyInfoCallback(specID)
         local treeCurrencyInfo = {};
-        local gates = LibTalentTree:GetGates(specID);
         local treeID = LibTalentTree:GetClassTreeId(tvCache.specIdToClassIdMap[specID]);
-        for _, gate in ipairs(gates) do
-            local nodeInfo = LibTalentTree:GetLibNodeInfo(treeID, gate.topLeftNodeID);
-            if nodeInfo.isClassNode then
-                treeCurrencyInfo[1] = {
+        local currencies = LibTalentTree:GetTreeCurrencies(treeID);
+        for i, currencyInfo in ipairs(currencies) do
+            if currencyInfo.isClassCurrency then
+                treeCurrencyInfo[i] = {
                     maxQuantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
                     quantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
                     spent = 0,
-                    traitCurrencyID = gate.traitCurrencyID,
+                    traitCurrencyID = currencyInfo.traitCurrencyID,
                 };
-            else
-                treeCurrencyInfo[2] = {
+            elseif currencyInfo.isSpecCurrency then
+                treeCurrencyInfo[i] = {
                     maxQuantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
                     quantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
                     spent = 0,
-                    traitCurrencyID = gate.traitCurrencyID
+                    traitCurrencyID = currencyInfo.traitCurrencyID
                 };
+            elseif currencyInfo.subTreeID then
+                treeCurrencyInfo[i] = {
+                    maxQuantity = currencyInfo.maxQuantity,
+                    quantity = currencyInfo.quantity,
+                    spent = currencyInfo.spent,
+                    traitCurrencyID = currencyInfo.traitCurrencyID,
+                    subTreeID = currencyInfo.subTreeID,
+                };
+                treeCurrencyInfo[currencyInfo.subTreeID] = treeCurrencyInfo[i];
+            else
+                error('unexpected currency, currencyID: ' .. currencyInfo.traitCurrencyID .. ' treeID: ' .. treeID);
             end
         end
 
@@ -627,6 +664,28 @@ function TalentViewerUIMixin:RefreshCurrencyDisplay()
     local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
     self.SpecCurrencyDisplay:SetPointTypeText(string.upper(tvCache.specNames[self:GetSpecID()]));
     self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
+end
+
+function TalentViewerUIMixin:SelectSubTree(subTreeID)
+    self.activeSubTreeID = subTreeID;
+    self:OnSubTreeSelectionChange();
+end
+function TalentViewerUIMixin:GetActiveSubTreeID()
+    return self.activeSubTreeID;
+end
+
+function TalentViewerUIMixin:OnSubTreeSelectionChange()
+    local subTreeIDs = LibTalentTree:GetSubTreeIdsForSpecId(self:GetSpecID());
+    for _, subTreeID in ipairs(subTreeIDs) do
+        local isActive = self:GetActiveSubTreeID() == subTreeID;
+        local nodes = LibTalentTree:GetSubTreeNodeIds(subTreeID);
+        for _, nodeID in ipairs(nodes) do
+            local button = self:GetTalentButtonByNodeID(nodeID);
+            if button then
+                button:UpdateSubTreeActiveVisual(isActive);
+            end
+        end
+    end
 end
 
 function TalentViewerUIMixin:OnLoad()
