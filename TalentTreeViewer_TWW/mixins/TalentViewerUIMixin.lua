@@ -14,6 +14,11 @@ local LibTalentTree = LibStub('LibTalentTree-1.0');
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name);
 
+local SELECTION_NODE_POS_X = 7500;
+local SELECTION_NODE_POS_Y = 4200;
+local SUB_TREE_OFFSET_X = 8100;
+local SUB_TREE_OFFSET_Y_TOP_TREE = 1500;
+local SUB_TREE_OFFSET_Y_BOTTOM_TREE = 4500;
 do
     TALENT_TREE_VIEWER_LOCALE_EXPORT = L['Export'];
     TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION = L['Select another Specialization'];
@@ -346,17 +351,18 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
 end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
-    local backup = TalentViewer.db.ignoreRestrictions
-    TalentViewer.db.ignoreRestrictions = true
-    self:ResetTree(true)
+    local backup = TalentViewer.db.ignoreRestrictions;
+    TalentViewer.db.ignoreRestrictions = true;
+    self:ResetTree(true);
     for _, entry in ipairs(loadoutEntryInfo) do
         if(entry.isChoiceNode) then
-            self:SetSelection(entry.nodeID, entry.selectionEntryID)
+            self:SetSelection(entry.nodeID, entry.selectionEntryID);
         else
-            self:SetRank(entry.nodeID, entry.ranksPurchased)
+            self:SetRank(entry.nodeID, entry.ranksPurchased);
         end
     end
-    TalentViewer.db.ignoreRestrictions = backup
+    RunNextFrame(function() self:OnSubTreeSelectionChange(); end);
+    TalentViewer.db.ignoreRestrictions = backup;
 
     return true;
 end
@@ -400,9 +406,31 @@ end
 function TalentViewerUIMixin:UpdateTalentButtonPosition(talentButton)
     parentMixin.UpdateTalentButtonPosition(self, talentButton);
     local nodeInfo = talentButton:GetNodeInfo();
+    local subTreeIDs = LibTalentTree:GetSubTreeIDsForSpecID(self:GetSpecID());
+    local subTreeID = nodeInfo.tvSubTreeID or nodeInfo.subTreeID;
+    local posX, posY;
     if nodeInfo.isSubTreeSelection then
-        local posY = 3900; -- todo: move to constant
-        local posX = 7200; -- todo: move to constant
+        posX = SELECTION_NODE_POS_X;
+        posY = SELECTION_NODE_POS_Y;
+    elseif subTreeID then
+        posX = nodeInfo.posX;
+        posY = nodeInfo.posY;
+
+        local isTopSubTree = subTreeIDs[1] == subTreeID;
+        local subTreeInfo = LibTalentTree:GetSubTreeInfo(subTreeID);
+        if subTreeInfo and subTreeInfo.posX and subTreeInfo.posY then
+            posX = posX - subTreeInfo.posX;
+            posY = posY - subTreeInfo.posY;
+        end
+        posX = posX + SUB_TREE_OFFSET_X;
+        posY = posY + (isTopSubTree and SUB_TREE_OFFSET_Y_TOP_TREE or SUB_TREE_OFFSET_Y_BOTTOM_TREE);
+    end
+    if posX and posY then
+        local basePanOffsetX = self.basePanOffsetX or 0;
+        local basePanOffsetY = self.basePanOffsetY or 0;
+        local panOffsetMultiplier = 10;
+        posX = posX + basePanOffsetX * panOffsetMultiplier;
+        posY = posY + basePanOffsetY * panOffsetMultiplier;
 		TalentButtonUtil.ApplyPosition(talentButton, self, posX, posY);
     end
 end
