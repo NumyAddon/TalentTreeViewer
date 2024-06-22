@@ -7,7 +7,7 @@ local ImportExport = ns.ImportExport
 local TalentViewer = ns.TalentViewer
 local L = LibStub("AceLocale-3.0"):GetLocale(name);
 
-local LOADOUT_SERIALIZATION_VERSION = 1;
+local LOADOUT_SERIALIZATION_VERSION = 2;
 local LEVELING_BUILD_SERIALIZATION_VERSION = 1;
 local LEVELING_EXPORT_STRING_PATERN = "%s-LVL-%s";
 
@@ -47,26 +47,32 @@ function ImportExport:WriteLoadoutContent(exportStream, treeID)
     for _, treeNodeID in ipairs(treeNodes) do
         local treeNode = getNodeInfo(treeNodeID);
 
-        local isNodeSelected = treeNode.ranksPurchased > 0;
+        local isNodeGranted = treeNode.activeRank - treeNode.ranksPurchased > 0;
+        local isNodePurchased = treeNode.ranksPurchased > 0;
+        local isNodeSelected = isNodeGranted or isNodePurchased;
         local isPartiallyRanked = treeNode.ranksPurchased ~= treeNode.maxRanks;
         local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection or treeNode.type == Enum.TraitNodeType.SubTreeSelection;
 
         exportStream:AddValue(1, isNodeSelected and 1 or 0);
         if(isNodeSelected) then
-            exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
-            if(isPartiallyRanked) then
-                exportStream:AddValue(self.bitWidthRanksPurchased, treeNode.ranksPurchased);
-            end
+            exportStream:AddValue(1, isNodePurchased and 1 or 0);
 
-            exportStream:AddValue(1, isChoiceNode and 1 or 0);
-            if(isChoiceNode) then
-                local entryIndex = self:GetActiveEntryIndex(treeNode);
-                if(entryIndex <= 0 or entryIndex > 4) then
-                    error("Error exporting tree node " .. treeNode.ID .. ". The active choice node entry index (" .. entryIndex .. ") is out of bounds. ");
+            if isNodePurchased then
+                exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
+                if(isPartiallyRanked) then
+                    exportStream:AddValue(self.bitWidthRanksPurchased, treeNode.ranksPurchased);
                 end
 
-                -- store entry index as zero-index
-                exportStream:AddValue(2, entryIndex - 1);
+                exportStream:AddValue(1, isChoiceNode and 1 or 0);
+                if(isChoiceNode) then
+                    local entryIndex = self:GetActiveEntryIndex(treeNode);
+                    if(entryIndex <= 0 or entryIndex > 4) then
+                        error("Error exporting tree node " .. treeNode.ID .. ". The active choice node entry index (" .. entryIndex .. ") is out of bounds. ");
+                    end
+
+                    -- store entry index as zero-index
+                    exportStream:AddValue(2, entryIndex - 1);
+                end
             end
         end
     end
@@ -87,28 +93,35 @@ function ImportExport:ReadLoadoutContent(importStream, treeID)
 
     local treeNodes = C_Traits.GetTreeNodes(treeID);
     for i, _ in ipairs(treeNodes) do
-        local nodeSelectedValue = importStream:ExtractValue(1)
+        local nodeSelectedValue = importStream:ExtractValue(1);
         local isNodeSelected =  nodeSelectedValue == 1;
+        local isNodePurchased = false;
         local isPartiallyRanked = false;
         local partialRanksPurchased = 0;
         local isChoiceNode = false;
         local choiceNodeSelection = 0;
 
         if(isNodeSelected) then
-            local isPartiallyRankedValue = importStream:ExtractValue(1);
-            isPartiallyRanked = isPartiallyRankedValue == 1;
-            if(isPartiallyRanked) then
-                partialRanksPurchased = importStream:ExtractValue(self.bitWidthRanksPurchased);
-            end
-            local isChoiceNodeValue = importStream:ExtractValue(1);
-            isChoiceNode = isChoiceNodeValue == 1;
-            if(isChoiceNode) then
-                choiceNodeSelection = importStream:ExtractValue(2);
+            local nodePurchasedValue = importStream:ExtractValue(1);
+
+            isNodePurchased = nodePurchasedValue == 1;
+            if(isNodePurchased) then
+                local isPartiallyRankedValue = importStream:ExtractValue(1);
+                isPartiallyRanked = isPartiallyRankedValue == 1;
+                if(isPartiallyRanked) then
+                    partialRanksPurchased = importStream:ExtractValue(self.bitWidthRanksPurchased);
+                end
+                local isChoiceNodeValue = importStream:ExtractValue(1);
+                isChoiceNode = isChoiceNodeValue == 1;
+                if(isChoiceNode) then
+                    choiceNodeSelection = importStream:ExtractValue(2);
+                end
             end
         end
 
         local result = {};
         result.isNodeSelected = isNodeSelected;
+        result.isNodeGranted = isNodeSelected and not isNodePurchased;
         result.isPartiallyRanked = isPartiallyRanked;
         result.partialRanksPurchased = partialRanksPurchased;
         result.isChoiceNode = isChoiceNode;
@@ -302,7 +315,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
 
         local indexInfo = loadoutContent[i];
 
-        if (indexInfo.isNodeSelected) then
+        if (indexInfo.isNodeSelected and not indexInfo.isNodeGranted) then
             local treeNode = getNodeInfo(treeNodeID);
             local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection or treeNode.type == Enum.TraitNodeType.SubTreeSelection;
             local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;

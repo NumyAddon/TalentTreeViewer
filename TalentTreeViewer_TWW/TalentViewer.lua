@@ -4,10 +4,11 @@ local ns = select(2, ...)
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
-ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31
-ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30
-ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP
-ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP
+ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31;
+ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30;
+ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = 10;
+ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP + ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
+ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP;
 
 --- @class TalentViewerTWW
 local TalentViewer = {
@@ -15,12 +16,12 @@ local TalentViewer = {
 	selectedEntries = {},
 	currencySpending = {},
 	_ns = ns,
-}
-_G.TalentViewer = TalentViewer
+};
+_G.TalentViewer = TalentViewer;
 
-ns.ImportExport = {}
-ns.IcyVeinsImport = {}
-ns.TalentViewer = TalentViewer
+ns.ImportExport = {};
+ns.IcyVeinsImport = {};
+ns.TalentViewer = TalentViewer;
 
 --- @class TalentViewer_CacheTWW
 local cache = {
@@ -33,18 +34,18 @@ local cache = {
 	specIndexToIdMap = {},
 	specIdToClassIdMap = {},
 	specIconId = {},
-}
-TalentViewer.cache = cache
+};
+TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
-local LibTalentTree = LibStub('LibTalentTree-1.0')
+local LibTalentTree = LibStub('LibTalentTree-1.0');
 --- @type LibUIDropDownMenuNumy-4.0
-local LibDD = LibStub("LibUIDropDownMenuNumy-4.0")
+local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
-local L = LibStub('AceLocale-3.0'):GetLocale(name)
+local L = LibStub('AceLocale-3.0'):GetLocale(name);
 
 local function wipe(table)
 	if table and type(table) == 'table' then
-		_G['wipe'](table)
+		_G['wipe'](table);
 	end
 end
 
@@ -53,19 +54,19 @@ end
 ----------------------
 do
 	for classID = 1, GetNumClasses() do
-		local _
-		cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID)
-		cache.specIndexToIdMap[classID] = {}
-		cache.classSpecs[classID] = {}
+		local _;
+		cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
+		cache.specIndexToIdMap[classID] = {};
+		cache.classSpecs[classID] = {};
 		for specIndex = 1, GetNumSpecializationsForClassID(classID) do
-			local specID = GetSpecializationInfoForClassID(classID, specIndex)
-			local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID))
+			local specID = GetSpecializationInfoForClassID(classID, specIndex);
+			local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
 			if specName ~= '' then
-				cache.specNames[specID] = specName
-				cache.classSpecs[classID][specID] = specName
-				cache.specIndexToIdMap[classID][specIndex] = specID
-				cache.specIconId[specID] = specIcon
-				cache.specIdToClassIdMap[specID] = classID
+				cache.specNames[specID] = specName;
+				cache.classSpecs[classID][specID] = specName;
+				cache.specIndexToIdMap[classID][specIndex] = specID;
+				cache.specIconId[specID] = specIcon;
+				cache.specIdToClassIdMap[specID] = classID;
 			end
 		end
 	end
@@ -74,15 +75,15 @@ end
 local frame = CreateFrame('FRAME')
 local function OnEvent(_, event, ...)
 	if event == 'ADDON_LOADED' then
-		local addonName = ...
+		local addonName = ...;
 		if addonName == name then
-			TalentViewer:OnInitialize()
-			if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin() end
+			TalentViewer:OnInitialize();
+			if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin(); end
 		end
 	end
 end
-frame:HookScript('OnEvent', OnEvent)
-frame:RegisterEvent('ADDON_LOADED')
+frame:HookScript('OnEvent', OnEvent);
+frame:RegisterEvent('ADDON_LOADED');
 
 -----------------------------
 --- Talent Tree Utilities ---
@@ -90,20 +91,20 @@ frame:RegisterEvent('ADDON_LOADED')
 
 ---@return TalentViewerUIMixinTWW
 function TalentViewer:GetTalentFrame()
-	return TalentViewer_DF.Talents
+	return TalentViewer_DF.Talents;
 end
 
 function TalentViewer:ApplyCurrencySpending(treeCurrency)
 	local spending = self.currencySpending[treeCurrency.traitCurrencyID] or 0;
-	treeCurrency.spent = spending
-	treeCurrency.quantity = treeCurrency.maxQuantity - spending
+	treeCurrency.spent = spending;
+	treeCurrency.quantity = treeCurrency.maxQuantity - spending;
 
-	return treeCurrency
+	return treeCurrency;
 end
 
 --- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
 function TalentViewer:ResetTree(lockLevelingBuild)
-	local talentFrame = self:GetTalentFrame()
+	local talentFrame = self:GetTalentFrame();
 	wipe(self.purchasedRanks);
 	wipe(self.selectedEntries);
 	wipe(self.currencySpending);
@@ -132,74 +133,74 @@ function TalentViewer:GetSelectedEntryId(nodeID)
 end
 
 function TalentViewer:SetRank(nodeID, rank)
-	local currentRank
+	local currentRank;
 	repeat
 		currentRank = self.purchasedRanks[nodeID] or 0;
-		if currentRank == rank then return end
+		if currentRank == rank then return; end
 		if rank > currentRank then
-			TalentViewer:PurchaseRank(nodeID)
+			TalentViewer:PurchaseRank(nodeID);
 		else
-			TalentViewer:RefundRank(nodeID)
+			TalentViewer:RefundRank(nodeID);
 		end
-	until currentRank == rank
+	until currentRank == rank;
 end
 
 function TalentViewer:PurchaseRank(nodeID)
-	self:ReduceCurrency(nodeID)
-	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1
+	self:ReduceCurrency(nodeID);
+	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1;
 
 	if self:IsRecordingLevelingBuild() then
-        self:RecordLevelingEntry(nodeID, self.purchasedRanks[nodeID])
+        self:RecordLevelingEntry(nodeID, self.purchasedRanks[nodeID]);
     end
 end
 
 function TalentViewer:RefundRank(nodeID)
-	self:RestoreCurrency(nodeID)
-	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1
+	self:RestoreCurrency(nodeID);
+	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1;
 
 	if self:IsRecordingLevelingBuild() then
-        self:RemoveLastRecordedLevelingEntry(nodeID)
+        self:RemoveLastRecordedLevelingEntry(nodeID);
     end
 end
 
 function TalentViewer:SetSelection(nodeID, entryID)
-    local hasPreviousSelection = self.selectedEntries[nodeID] ~= nil
+    local hasPreviousSelection = self.selectedEntries[nodeID] ~= nil;
 
     if (entryID and hasPreviousSelection and entryID ~= self.selectedEntries[nodeID]) then
         if self:IsRecordingLevelingBuild() then
-            self:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
+            self:UpdateRecordedLevelingChoiceEntry(nodeID, entryID);
         end
 	elseif (entryID and not hasPreviousSelection) then
-		self:ReduceCurrency(nodeID)
+		self:ReduceCurrency(nodeID);
 
 		if self:IsRecordingLevelingBuild() then
-            self:RecordLevelingEntry(nodeID, 1, entryID)
+            self:RecordLevelingEntry(nodeID, 1, entryID);
         end
 	elseif (not entryID and hasPreviousSelection) then
-		self:RestoreCurrency(nodeID)
+		self:RestoreCurrency(nodeID);
 
 		if self:IsRecordingLevelingBuild() then
-            self:RemoveLastRecordedLevelingEntry(nodeID)
+            self:RemoveLastRecordedLevelingEntry(nodeID);
         end
 	end
 
-	self.selectedEntries[nodeID] = entryID
+	self.selectedEntries[nodeID] = entryID;
 end
 
 function TalentViewer:ReduceCurrency(nodeID)
-	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID)
+	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
-			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount
+			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount;
 		end
 	end
 end
 
 function TalentViewer:RestoreCurrency(nodeID)
-	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID)
+	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
 	if costInfo then
 		for _, cost in ipairs(costInfo) do
-			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount
+			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount;
 		end
 	end
 end
@@ -209,17 +210,17 @@ end
 ----------------------
 
 function TalentViewer:InitSpecSelection()
-	local _, _, classId = UnitClass('player')
-	local currentSpec = GetSpecialization() or 1
-	local specId = cache.specIndexToIdMap[classId][currentSpec]
-	TalentViewer:SelectSpec(classId, specId)
+	local _, _, classId = UnitClass('player');
+	local currentSpec = GetSpecialization() or 1;
+	local specId = cache.specIndexToIdMap[classId][currentSpec];
+	TalentViewer:SelectSpec(classId, specId);
 end
 
 function TalentViewer:OnInitialize()
-	self.db = TalentTreeViewerDB
+	self.db = TalentTreeViewerDB;
 
 	if(self.ignoreRestrictionsCheckbox) then
-		self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions)
+		self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions);
 	end
 end
 
@@ -243,14 +244,14 @@ end
 
 function TalentViewer:ExportLoadout()
 	--- @type TalentViewerImportExportTWW
-	local ImportExport = ns.ImportExport
+	local ImportExport = ns.ImportExport;
 
-	return ImportExport:GetLoadoutExportString()
+	return ImportExport:GetLoadoutExportString();
 end
 
 function TalentViewer:LinkToChat()
-	local exportString = self:ExportLoadout()
-	if not exportString then return end
+	local exportString = self:ExportLoadout();
+	if not exportString then return; end
 
 	if not TALENT_BUILD_CHAT_LINK_TEXT then
 		if not ChatEdit_InsertLink(exportString) then
@@ -276,13 +277,8 @@ function TalentViewer:LinkToChat()
 end
 
 function TalentViewer:ToggleTalentView()
-	self:InitFrame()
-	if TalentViewer_DF:IsShown() then
-		TalentViewer_DF:Hide()
-
-		return
-	end
-	TalentViewer_DF:Show()
+	self:InitFrame();
+	TalentViewer_DF:SetShown(not TalentViewer_DF:IsShown());
 end
 
 function TalentViewer:InitFrame()
@@ -301,43 +297,43 @@ end
 --- @param classId number
 --- @param specId number
 function TalentViewer:SelectSpec(classId, specId)
-	assert(type(classId) == 'number', 'classId must be a number')
-	assert(type(specId) == 'number', 'specId must be a number')
+	assert(type(classId) == 'number', 'classId must be a number');
+	assert(type(specId) == 'number', 'specId must be a number');
 
-	self.selectedClassId = classId
-	self.selectedSpecId = specId
-	self.treeId = LibTalentTree:GetClassTreeId(classId)
-	self:SetPortraitIcon(specId)
+	self.selectedClassId = classId;
+	self.selectedSpecId = specId;
+	self.treeId = LibTalentTree:GetClassTreeId(classId);
+	self:SetPortraitIcon(specId);
 
 	TalentViewer_DF:SetTitle(string.format(
 		'%s %s - %s',
 		cache.classNames[classId],
 		TALENTS,
 		cache.classSpecs[classId][specId] or ''
-	))
+	));
 
 	self:ResetTree();
 end
 
 function TalentViewer:SetPortraitIcon(specId)
-	local icon = cache.specIconId[specId]
+	local icon = cache.specIconId[specId];
 	TalentViewer_DF:SetPortraitTexCoord(0, 1, 0, 1);
 	TalentViewer_DF:SetPortraitToAsset(icon);
 end
 
 function TalentViewer:MakeDropDownButton()
-	local mainButton = TalentViewer_DF.Talents.TV_DropdownButton
-	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF)
+	local mainButton = TalentViewer_DF.Talents.TV_DropdownButton;
+	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF);
 
-	mainButton = Mixin(mainButton, DropDownToggleButtonMixin)
-	mainButton:OnLoad_Intrinsic()
+	mainButton = Mixin(mainButton, DropDownToggleButtonMixin);
+	mainButton:OnLoad_Intrinsic();
 	mainButton:SetScript('OnMouseDown', function(self)
-		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil)
+		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil);
 	end)
 
-	dropDown:Hide()
+	dropDown:Hide();
 
-	return mainButton, dropDown
+	return mainButton, dropDown;
 end
 
 function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
@@ -355,7 +351,7 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 				arg2 = classId,
 				func = setValueFunc,
 				checked = isCheckedFunc,
-			})
+			});
 		end
 
 		table.insert(menu, {
@@ -368,64 +364,64 @@ function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
 			menuList = specMenuList,
 			checked = isCheckedFunc,
 			arg2 = classId,
-		})
+		});
 	end
 
-	return menu
+	return menu;
 end
 
 function TalentViewer:InitCheckbox()
-	if self.ignoreRestrictionsCheckbox then return end
-	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions
-	local checkbox = self.ignoreRestrictionsCheckbox
-	checkbox.Text:SetText(L['Ignore Restrictions'])
+	if self.ignoreRestrictionsCheckbox then return; end
+	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions;
+	local checkbox = self.ignoreRestrictionsCheckbox;
+	checkbox.Text:SetText(L['Ignore Restrictions']);
 	if self.db then
-		checkbox:SetChecked(self.db.ignoreRestrictions)
+		checkbox:SetChecked(self.db.ignoreRestrictions);
 	end
 	checkbox:SetScript('OnEnter', function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
 		GameTooltip_AddNormalLine(GameTooltip, L['Ignore restrictions when selecting talents']);
 		GameTooltip:Show();
-	end)
+	end);
 	checkbox:SetScript('OnLeave', function(self)
 		GameTooltip:Hide();
-	end)
+	end);
 	checkbox:SetScript('OnClick', function(button)
 		self.db.ignoreRestrictions = button:GetChecked()
 		self:GetTalentFrame():UpdateTreeCurrencyInfo()
-	end)
+	end);
 end
 
 function TalentViewer:InitDropdown()
-	if self.dropDownButton then return end
-	self.dropDownButton, self.dropDown = self:MakeDropDownButton()
+	if self.dropDownButton then return; end
+	self.dropDownButton, self.dropDown = self:MakeDropDownButton();
 
 	if C_AddOns.IsAddOnLoaded('ElvUI') then
-		self:ApplyElvUISkin()
+		self:ApplyElvUISkin();
 	end
 
 	local function setValue(_, specId, classId)
-		LibDD:CloseDropDownMenus()
+		LibDD:CloseDropDownMenus();
 
-		TalentViewer:SelectSpec(classId, specId)
+		TalentViewer:SelectSpec(classId, specId);
 	end
 
 	local isChecked = function(button)
-		return button.arg2 == TalentViewer.selectedClassId and (not button.arg1 or button.arg1 == TalentViewer.selectedSpecId)
+		return button.arg2 == TalentViewer.selectedClassId and (not button.arg1 or button.arg1 == TalentViewer.selectedSpecId);
 	end
 
-	self.menuList = self:BuildMenu(setValue, isChecked)
-	LibDD:EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0)
+	self.menuList = self:BuildMenu(setValue, isChecked);
+	LibDD:EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0);
 end
 
 function TalentViewer:ApplyElvUISkin()
-	if true then return end
-	if self.skinned then return end
-	self.skinned = true
-	local S = unpack(ElvUI):GetModule('Skins')
+	if true then return; end
+	if self.skinned then return; end
+	self.skinned = true;
+	local S = unpack(ElvUI):GetModule('Skins');
 
-	S:HandleDropDownBox(self.dropDown)
-	S:HandleButton(self.dropDownButton)
+	S:HandleDropDownBox(self.dropDown);
+	S:HandleButton(self.dropDownButton);
 
 	-- loosely based on ElvUI's talent skinning code
 
@@ -449,7 +445,7 @@ local defaultRecordingInfo = {
         [1] = {}, -- class entries
         [2] = {}, -- spec entries
     },
-}
+};
 --- @type table<number, table<number, TalentViewer_LevelingBuildInfoContainer>> # [specID][buildID][specOrClass] = entries (specOrClass is 1 for class, 2 for spec)
 TalentViewer.levelingBuilds = {};
 TalentViewer.recordingInfo = CreateFromMixins(defaultRecordingInfo);
