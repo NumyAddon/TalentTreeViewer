@@ -532,25 +532,25 @@ function TalentViewer:StartRecordingLevelingBuild()
 end
 
 function TalentViewer:RecalculateCurrentStartingOffsets()
-        if not self:GetTalentFrame().treeCurrencyInfo then return; end
-        local classCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[1];
-        if classCurrencyInfo and classCurrencyInfo.traitCurrencyID then
-            local amount = classCurrencyInfo and classCurrencyInfo.quantity or 0
-            local requiredLevel = 8;
-            local spent = (ns.MAX_LEVEL_CLASS_CURRENCY_CAP) - amount;
-            requiredLevel = math.max(10, requiredLevel + (spent * 2));
+    if not self:GetTalentFrame().treeCurrencyInfo then return; end
+    local classCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[1];
+    if classCurrencyInfo and classCurrencyInfo.traitCurrencyID then
+        local amount = classCurrencyInfo and classCurrencyInfo.quantity or 0
+        local requiredLevel = 8;
+        local spent = (ns.MAX_LEVEL_CLASS_CURRENCY_CAP) - amount;
+        requiredLevel = math.max(defaultRecordingInfo.startingOffset[1], requiredLevel + (spent * 2));
 
-            self.recordingInfo.startingOffset[1] = requiredLevel;
-        end
-        local specCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[2];
-        if specCurrencyInfo and specCurrencyInfo.traitCurrencyID then
-            local amount = specCurrencyInfo and specCurrencyInfo.quantity or 0
-            local requiredLevel = 9;
-            local spent = (ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
-            requiredLevel = math.max(10, requiredLevel + (spent * 2));
+        self.recordingInfo.startingOffset[1] = requiredLevel;
+    end
+    local specCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[2];
+    if specCurrencyInfo and specCurrencyInfo.traitCurrencyID then
+        local amount = specCurrencyInfo and specCurrencyInfo.quantity or 0
+        local requiredLevel = 9;
+        local spent = (ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
+        requiredLevel = math.max(defaultRecordingInfo.startingOffset[1], requiredLevel + (spent * 2));
 
-            self.recordingInfo.startingOffset[2] = requiredLevel;
-        end
+        self.recordingInfo.startingOffset[2] = requiredLevel;
+    end
 end
 
 function TalentViewer:StopRecordingLevelingBuild()
