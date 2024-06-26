@@ -140,6 +140,14 @@ function TalentViewerUIMixin:IsPreviewingSubTree()
     return false;
 end
 
+--- Various checks are disabled when the restrictions are disabled, improving performance of bulk actions substantially
+function TalentViewerUIMixin:RunWithRestrictionsDisabled(func)
+    local backup = TalentViewer.db.ignoreRestrictions;
+    TalentViewer.db.ignoreRestrictions = true;
+    securecallfunction(func);
+    TalentViewer.db.ignoreRestrictions = backup;
+end
+
 function TalentViewerUIMixin:ShowSelections(...)
     parentMixin.ShowSelections(self, ...);
     for _, button in ipairs(self.SelectionChoiceFrame.selectionFrameArray) do
@@ -351,19 +359,17 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
 end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
-    local backup = TalentViewer.db.ignoreRestrictions;
-    TalentViewer.db.ignoreRestrictions = true;
-    self:ResetTree(true);
-    for _, entry in ipairs(loadoutEntryInfo) do
-        if(entry.isChoiceNode) then
-            self:SetSelection(entry.nodeID, entry.selectionEntryID);
-        else
-            self:SetRank(entry.nodeID, entry.ranksPurchased);
+    self:RunWithRestrictionsDisabled(function()
+        self:ResetTree(true);
+        for _, entry in ipairs(loadoutEntryInfo) do
+            if(entry.isChoiceNode) then
+                self:SetSelection(entry.nodeID, entry.selectionEntryID);
+            else
+                self:SetRank(entry.nodeID, entry.ranksPurchased);
+            end
         end
-    end
+    end);
     RunNextFrame(function() self:OnSubTreeSelectionChange(); end);
-    TalentViewer.db.ignoreRestrictions = backup;
-
     return true;
 end
 
@@ -460,26 +466,36 @@ function TalentViewerUIMixin:SetRank(nodeID, rank)
 end
 
 function TalentViewerUIMixin:AfterRankChange(nodeID)
+    local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
     self:MarkEdgeRequirementCacheDirty(nodeID);
     self:MarkNodeInfoCacheDirty(nodeID);
     self:UpdateTreeCurrencyInfo();
     self:UpdateEdgeSiblings(nodeID);
+
+    local subTreeID = nodeInfo.tvSubTreeID or nodeInfo.subTreeID;
+    if subTreeID then
+        RunNextFrame(function()
+            local talentButton = self:GetTalentButtonByNodeID(nodeID);
+            local isActive = self:GetActiveSubTreeID() == subTreeID;
+            talentButton:UpdateSubTreeActiveVisual(isActive);
+        end);
+    end
 end
 
 function TalentViewerUIMixin:UpdateEdgeSiblings(nodeID)
-    if TalentViewer.db.ignoreRestrictions then return end
-    local nodeInfo = self:GetAndCacheNodeInfo(nodeID)
-    local edges = nodeInfo.visibleEdges
+    if TalentViewer.db.ignoreRestrictions then return; end
+    local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
+    local edges = nodeInfo.visibleEdges;
 
     if not edges or not edges[1] or edges[1].isActive then return end
     for _, edge in ipairs(edges) do
-        local siblingNodeID = edge.targetNode
-        local siblingNodeInfo = self:GetAndCacheNodeInfo(siblingNodeID)
+        local siblingNodeID = edge.targetNode;
+        local siblingNodeInfo = self:GetAndCacheNodeInfo(siblingNodeID);
         if not siblingNodeInfo.meetsEdgeRequirements and siblingNodeInfo.ranksPurchased > 0 then
             if #siblingNodeInfo.entryIDs > 1 then
-                self:SetSelection(siblingNodeID, nil)
+                self:SetSelection(siblingNodeID, nil);
             else
-                self:SetRank(siblingNodeID, 0)
+                self:SetRank(siblingNodeID, 0);
             end
         end
     end
@@ -487,36 +503,35 @@ end
 
 --- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
 function TalentViewerUIMixin:ResetTree(lockLevelingBuild)
-    TalentViewer:ResetTree(lockLevelingBuild)
+    TalentViewer:ResetTree(lockLevelingBuild);
 end
 
 function TalentViewerUIMixin:ResetClassTalents()
     local classTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[1] and self.treeCurrencyInfo[1].traitCurrencyID;
-    self:ResetByCurrencyID(classTraitCurrencyID)
+    self:ResetByCurrencyID(classTraitCurrencyID);
 end
 
 function TalentViewerUIMixin:ResetSpecTalents()
     local specTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[2] and self.treeCurrencyInfo[2].traitCurrencyID;
-    self:ResetByCurrencyID(specTraitCurrencyID)
+    self:ResetByCurrencyID(specTraitCurrencyID);
 end
 
 function TalentViewerUIMixin:ResetByCurrencyID(currencyID)
-    local backup = TalentViewer.db.ignoreRestrictions
-    TalentViewer.db.ignoreRestrictions = true
-    for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
-        local cost = self:GetNodeCost(nodeID)
-        for _, currencyCost in ipairs(cost) do
-            if currencyCost.ID == currencyID then
-                self:SetRank(nodeID, 0)
-                self:SetSelection(nodeID, nil)
+    self:RunWithRestrictionsDisabled(function()
+        for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
+            local cost = self:GetNodeCost(nodeID);
+            for _, currencyCost in ipairs(cost) do
+                if currencyCost.ID == currencyID then
+                    self:SetRank(nodeID, 0);
+                    self:SetSelection(nodeID, nil);
+                end
             end
         end
-    end
-    TalentViewer.db.ignoreRestrictions = backup
+    end);
 end
 
 function TalentViewerUIMixin:CanAfford(cost)
-    return parentMixin.CanAfford(self, cost)
+    return parentMixin.CanAfford(self, cost);
 end
 
 function TalentViewerUIMixin:RefreshGates()
@@ -608,29 +623,27 @@ end
 
 function TalentViewerUIMixin:ProcessGateMandatedRefunds()
     if TalentViewer.db.ignoreRestrictions then return; end
-    local backup = TalentViewer.db.ignoreRestrictions;
-    TalentViewer.db.ignoreRestrictions = true;
+    self:RunWithRestrictionsDisabled(function()
+        self:UpdateNodeGateMapping();
+        local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate();
+        local gates = LibTalentTree:GetGates(self:GetSpecID());
 
-    self:UpdateNodeGateMapping();
-    local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate();
-    local gates = LibTalentTree:GetGates(self:GetSpecID());
-
-    for _, gateInfo in ipairs(gates) do
-        local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0;
-        if eligibleSpending < gateInfo.spentAmountRequired then
-            for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
-                local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-                if nodeInfo.ranksPurchased > 0 then
-                    if self:IsChoiceNode(nodeInfo) then
-                        self:SetSelection(nodeID, nil);
-                    else
-                        self:SetRank(nodeID, 0);
+        for _, gateInfo in ipairs(gates) do
+            local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0;
+            if eligibleSpending < gateInfo.spentAmountRequired then
+                for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
+                    local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
+                    if nodeInfo.ranksPurchased > 0 then
+                        if self:IsChoiceNode(nodeInfo) then
+                            self:SetSelection(nodeID, nil);
+                        else
+                            self:SetRank(nodeID, 0);
+                        end
                     end
                 end
             end
         end
-    end
-    TalentViewer.db.ignoreRestrictions = backup;
+    end);
 end
 
 function TalentViewerUIMixin:UpdateNodeGateMapping()
@@ -848,46 +861,45 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
     local info = buildID and self:GetLevelingBuildInfo(buildID);
     if not info then return; end
 
-    local backup = TalentViewer.db.ignoreRestrictions
-    TalentViewer.db.ignoreRestrictions = true -- todo - add a proper way to improve performance of bulk changes
-    self:ResetTree(lockLevelingBuild);
-    if level >= 10 then
-        for _ = 10, level do
-            local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
-            if not nodeID then break; end
-            if entryID then
-                self:SetSelection(nodeID, entryID);
-            else
-                self:PurchaseRank(nodeID);
-            end
-        end
-    end
-
-    for _, button in ipairs(self.levelingOrderButtons) do
-        button:SetOrder({});
-    end
-    for entryLevel = 10, ns.MAX_LEVEL do
-        local entryInfo = info[entryLevel];
-        if entryInfo then
-            local nodeID = entryInfo.nodeID;
-            local button = self:GetTalentButtonByNodeID(nodeID);
-            if not button then
-                if DevTool and DevTool.AddData then
-                    DevTool:AddData({
-                        entry = entryInfo,
-                        nodeID = nodeID,
-                        level = entryLevel,
-                        nodeInfo = self:GetAndCacheNodeInfo(nodeID),
-                    }, 'could not find button for NodeID when applying');
+    self:RunWithRestrictionsDisabled(function()
+        self:ResetTree(lockLevelingBuild);
+        if level >= 10 then
+            for _ = 10, level do
+                local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
+                if not nodeID then break; end
+                if entryID then
+                    self:SetSelection(nodeID, entryID);
+                else
+                    self:PurchaseRank(nodeID);
                 end
-            else
-                button.LevelingOrder:AppendToOrder(entryLevel);
             end
         end
-    end
 
-    self:UpdateTreeCurrencyInfo();
-    TalentViewer.db.ignoreRestrictions = backup
+        for _, button in ipairs(self.levelingOrderButtons) do
+            button:SetOrder({});
+        end
+        for entryLevel = 10, ns.MAX_LEVEL do
+            local entryInfo = info[entryLevel];
+            if entryInfo then
+                local nodeID = entryInfo.nodeID;
+                local button = self:GetTalentButtonByNodeID(nodeID);
+                if not button then
+                    if DevTool and DevTool.AddData then
+                        DevTool:AddData({
+                            entry = entryInfo,
+                            nodeID = nodeID,
+                            level = entryLevel,
+                            nodeInfo = self:GetAndCacheNodeInfo(nodeID),
+                        }, 'could not find button for NodeID when applying');
+                    end
+                else
+                    button.LevelingOrder:AppendToOrder(entryLevel);
+                end
+            end
+        end
+
+        self:UpdateTreeCurrencyInfo();
+    end);
 end
 
 ----------------------
