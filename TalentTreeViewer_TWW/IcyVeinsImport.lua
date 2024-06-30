@@ -26,6 +26,11 @@ end
 
 --- @param fullUrl string
 function IcyVeinsImport:ImportUrl(fullUrl)
+    if true then
+        self:ShowImportError("IcyVeins import is not yet supported for TWW");
+
+        return nil;
+    end
     if not self:IsTalentUrl(fullUrl) then
         self:ShowImportError("Invalid URL");
 

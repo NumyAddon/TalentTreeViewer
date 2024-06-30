@@ -818,7 +818,7 @@ function TalentViewerUIMixin:UpdateLevelingBuildHighlights()
     end
 end
 
---- @return nil|table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+--- @return nil|TalentViewer_LevelingBuild
 function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
     return TalentViewer:GetLevelingBuild(buildID);
 end
@@ -827,8 +827,17 @@ function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
     local info = self:GetLevelingBuildInfo(buildID);
     if not info then return; end
 
-    for i = 10, ns.MAX_LEVEL do
-        local entryInfo = info[i];
+    for level = 10, ns.MAX_LEVEL do
+        local targetTree;
+        if level < 71 then
+            targetTree = (level % 2) + 1;
+        else
+            targetTree = self:GetActiveSubTreeID();
+            if not targetTree and info.selectedSubTreeID then
+                return LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self:GetSpecID(), info.selectedSubTreeID);
+            end
+        end
+        local entryInfo = info.entries[targetTree] and info.entries[targetTree][level];
         local nodeInfo = entryInfo and self:GetAndCacheNodeInfo(entryInfo.nodeID);
         if nodeInfo and nodeInfo.ranksPurchased < entryInfo.targetRank then
             return entryInfo.nodeID, entryInfo.entryID;
@@ -874,13 +883,11 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
                 end
             end
         end
-
         for _, button in ipairs(self.levelingOrderButtons) do
             button:SetOrder({});
         end
-        for entryLevel = 10, ns.MAX_LEVEL do
-            local entryInfo = info[entryLevel];
-            if entryInfo then
+        for _, entries in pairs(info.entries) do
+            for _, entryInfo in pairs(entries) do
                 local nodeID = entryInfo.nodeID;
                 local button = self:GetTalentButtonByNodeID(nodeID);
                 if not button then

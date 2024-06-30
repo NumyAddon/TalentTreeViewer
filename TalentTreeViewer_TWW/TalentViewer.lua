@@ -111,6 +111,7 @@ function TalentViewer:ResetTree(lockLevelingBuild)
 	wipe(talentFrame.edgeRequirementsCache);
 	talentFrame.nodesPerGate = nil;
 	talentFrame.eligibleNodesPerGate = nil;
+	talentFrame:SelectSubTree(nil);
 	talentFrame:SetTalentTreeID(self.treeId, true);
 	talentFrame:UpdateClassVisuals();
 	talentFrame:UpdateSpecBackground();
@@ -433,18 +434,17 @@ end
 local defaultRecordingInfo = {
     active = true,
     buildID = 0, -- matches #levelingBuilds, effectively an auto increment
-    currentIndex = {
-        [1] = 0, -- class currentIndex
-        [2] = 0, -- spec currentIndex
-    },
     startingOffset = { -- startingOffset = level at which entries[1] is learned - 1; so that level = startingOffset + index
         [1] = 10 - 2, -- class startingOffset
         [2] = 11 - 2, -- spec startingOffset
+        -- hero spec trees are not pre-allocated
     },
     entries = {
         [1] = {}, -- class entries
         [2] = {}, -- spec entries
+        -- hero spec trees are not pre-allocated
     },
+    entriesCount = 0,
 };
 --- @type table<number, table<number, TalentViewer_LevelingBuildInfoContainer>> # [specID][buildID][specOrClass] = entries (specOrClass is 1 for class, 2 for spec)
 TalentViewer.levelingBuilds = {};
@@ -454,30 +454,28 @@ function TalentViewer:GetCurrentLevelingBuildID()
     return self.recordingInfo.buildID;
 end
 
---- @return nil|table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+--- @return nil|table<number, table<number, TalentViewer_LevelingBuildEntry>> # [tree] = {[level] = entry}, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs
 function TalentViewer:GetCurrentLevelingBuild()
     return self:GetCurrentLevelingBuildID() and self:GetLevelingBuild(self:GetCurrentLevelingBuildID());
 end
 
 --- @param buildID number
---- @return nil|table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+--- @return TalentViewer_LevelingBuild?
 function TalentViewer:GetLevelingBuild(buildID)
 	local build = self.levelingBuilds[self.selectedSpecId] and self.levelingBuilds[self.selectedSpecId][buildID] or nil;
 	if not build then return nil; end
 
 	local buildEntries = {};
-	local classStartingOffset = build.startingOffset[1];
-	local classEntries = build.entries[1];
-	for i, entry in ipairs(classEntries) do
-        buildEntries[classStartingOffset + (i * 2)] = entry;
-	end
-	local specStartingOffset = build.startingOffset[2];
-	local specEntries = build.entries[2];
-	for i, entry in ipairs(specEntries) do
-        buildEntries[specStartingOffset + (i * 2)] = entry;
+	for tree, entries in pairs(build.entries) do
+	    buildEntries[tree] = {};
+        local startingOffset = build.startingOffset[tree] or 70;
+        local multiplier = (tree <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
+        for i, entry in ipairs(entries) do
+            buildEntries[tree][startingOffset + (i * multiplier)] = entry;
+        end
     end
 
-    return buildEntries;
+    return { entries = buildEntries, selectedSubTreeID = build.selectedSubTreeID };
 end
 
 --- @param lockLevelingBuild boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
@@ -490,8 +488,10 @@ function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
 
     self.recordingInfo.buildID = buildID;
     self.recordingInfo.entries = buildInfo.entries;
+    self.recordingInfo.entriesCount = buildInfo.entriesCount;
     self.recordingInfo.startingOffset = buildInfo.startingOffset;
     self.recordingInfo.active = false;
+    self.recordingInfo.buildReference = buildInfo;
 	self:GetTalentFrame():SetLevelingBuildID(buildID);
 	self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
     self.recordingInfo.active = true;
@@ -499,23 +499,39 @@ function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
     self:GetTalentFrame().LevelingBuildLevelSlider:SetValue(level);
 end
 
---- @return table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
-function TalentViewer:ImportLevelingBuild(buildEntries)
+--- @param levelingBuild TalentViewer_LevelingBuild
+function TalentViewer:ImportLevelingBuild(levelingBuild)
+    local buildEntries = levelingBuild.entries;
+    local selectedSubTreeID = levelingBuild.selectedSubTreeID;
     self:ClearLevelingBuild();
-    local classStartingOffset, specStartingOffset;
-    for level = 10, ns.MAX_LEVEL do
-        local isClassNode = level % 2 == 0;
-        local entry = buildEntries[level];
-        if entry then
-            if isClassNode and not classStartingOffset then
-                classStartingOffset = level - 2;
-                self.recordingInfo.startingOffset[1] = classStartingOffset;
+    for tree, entries in pairs(buildEntries) do
+        local baseStartingOffset;
+        local multiplier = 2;
+        if tree == 1 then
+            baseStartingOffset = 10;
+        elseif tree == 2 then
+            baseStartingOffset = 11;
+        else
+            baseStartingOffset = 71;
+            multiplier = 1;
+        end
+        baseStartingOffset = baseStartingOffset - (1 * multiplier)
+        local startingOffset;
+        for level = 10, ns.MAX_LEVEL do
+            local entry = entries[level];
+            if entry then
+                if not startingOffset then
+                    startingOffset= level - (1 * multiplier);
+                end
+                self:RecordLevelingEntry(entry.nodeID, entry.targetRank, entry.entryID);
             end
-            if not isClassNode and not specStartingOffset then
-                specStartingOffset = level - 2;
-                self.recordingInfo.startingOffset[2] = specStartingOffset;
-            end
-            self:RecordLevelingEntry(entry.nodeID, entry.targetRank, entry.entryID);
+        end
+        self.recordingInfo.startingOffset[tree] = startingOffset or baseStartingOffset;
+    end
+    if selectedSubTreeID then
+        local nodeID, subTreeEntryID = LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self.selectedSpecId, selectedSubTreeID);
+        if nodeID and subTreeEntryID then
+            self:RecordLevelingEntry(nodeID, 1, subTreeEntryID);
         end
     end
 end
@@ -567,8 +583,7 @@ function TalentViewer:ClearLevelingBuild()
     if
         self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID]
         and self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID].entries == self.recordingInfo.entries
-        and not next(self.recordingInfo.entries[1])
-        and not next(self.recordingInfo.entries[2])
+        and 0 == self.recordingInfo.entriesCount
     then -- the build is already empty, no point resetting it
         return;
     end
@@ -577,6 +592,7 @@ function TalentViewer:ClearLevelingBuild()
     local info = {
         entries = self.recordingInfo.entries,
         startingOffset = self.recordingInfo.startingOffset,
+        entriesCount = 0,
     };
     table.insert(self.levelingBuilds[self.selectedSpecId], info);
     self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId];
@@ -596,9 +612,14 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
     if nodeInfo.isSubTreeSelection then
         local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
         button.LevelingOrder:SetOrder({71});
-        self.recordingInfo.selectedSubTreeEntryID = entryID;
+        local entryInfo = entryID and self:GetTalentFrame():GetAndCacheEntryInfo(entryID);
+        self.recordingInfo.selectedSubTreeID = entryInfo and entryInfo.subTreeID;
+        self.recordingInfo.buildReference.selectedSubTreeID = self.recordingInfo.selectedSubTreeID;
+
         return;
     end;
+    self.recordingInfo.entriesCount = self.recordingInfo.entriesCount + 1;
+    self.recordingInfo.buildReference.entriesCount = self.recordingInfo.entriesCount;
     local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
     self.recordingInfo.entries[indexKey] = self.recordingInfo.entries[indexKey] or {};
     local entries = self.recordingInfo.entries[indexKey];
@@ -607,7 +628,6 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
         targetRank = targetRank,
         entryID = entryID,
     });
-    self.recordingInfo.currentIndex[indexKey] = #entries;
     local baseLevel = self.recordingInfo.startingOffset[indexKey] or 70;
     local multiplier = (indexKey <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
     local level = baseLevel + (#entries * multiplier);
@@ -628,8 +648,8 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
 end
 
 function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
-    local isClassNode = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID).isClassNode;
-    local indexKey = isClassNode and 1 or 2;
+    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
     local entries = self.recordingInfo.entries[indexKey];
     local removed;
     for i = #entries, 1, -1 do
@@ -637,7 +657,8 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
         if (entry and entry.nodeID == nodeID) then
             removed = i;
             table.remove(entries, i);
-            self.recordingInfo.currentIndex[indexKey] = #entries;
+            self.recordingInfo.entriesCount = self.recordingInfo.entriesCount - 1;
+            self.recordingInfo.buildReference.entriesCount = self.recordingInfo.entriesCount;
             local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
             if not button then
                 if DevTool and DevTool.AddData then
@@ -675,8 +696,8 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
 end
 
 function TalentViewer:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
-    local isClassNode = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID).isClassNode;
-    local indexKey = isClassNode and 1 or 2;
+    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
     local entries = self.recordingInfo.entries[indexKey];
     for _, entry in ipairs(entries) do
         if (entry.nodeID == nodeID) then
@@ -766,7 +787,7 @@ function TalentViewer:InitLevelingBuildUIs()
                 text = string.format(
                     L['Leveling build %d (%d points spent)'],
                     buildID,
-                    #buildInfo.entries[1] + #buildInfo.entries[2]
+                    buildInfo.entriesCount
                 ),
                 func = function(_, buildID)
                     self:ApplyLevelingBuild(buildID, currentValue, true);

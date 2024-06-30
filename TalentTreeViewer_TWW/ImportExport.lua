@@ -8,20 +8,21 @@ local TalentViewer = ns.TalentViewer
 local L = LibStub("AceLocale-3.0"):GetLocale(name);
 
 local LOADOUT_SERIALIZATION_VERSION = 2;
-local LEVELING_BUILD_SERIALIZATION_VERSION = 1;
+local LEVELING_BUILD_SERIALIZATION_VERSION = 2;
 local LEVELING_EXPORT_STRING_PATERN = "%s-LVL-%s";
+local HERO_SELECTION_NODE_LEVEL = 71;
 
 local getNodeInfo = function(nodeId) return TalentViewer:GetTalentFrame():GetAndCacheNodeInfo(nodeId) end
 
-function ImportExport:GetTreeId()
+function ImportExport:GetTreeID()
     return TalentViewer.treeId;
 end
-function ImportExport:GetSpecId()
+function ImportExport:GetSpecID()
     return TalentViewer.selectedSpecId;
 end
 
 ImportExport.levelingBitWidthVersion = 5;
-ImportExport.levelingBitWidthData = 7; -- allows for 128 order indexes
+ImportExport.levelingBitWidthData = 7; -- allows for 128 levels
 
 ----- copied and adapted from Blizzard_ClassTalentImportExport.lua -----
 
@@ -34,15 +35,15 @@ StaticPopupDialogs["TALENT_VIEWER_LOADOUT_IMPORT_ERROR_DIALOG"] = {
     button1 = OKAY,
     button2 = nil,
     timeout = 0,
-    OnAccept = function()
-    end,
-    OnCancel = function()
-    end,
+    OnAccept = function() end,
+    OnCancel = function() end,
     whileDead = 1,
     hideOnEscape = 1,
 };
 
+--- @return TalentViewerTWW_PurchasedNode[]
 function ImportExport:WriteLoadoutContent(exportStream, treeID)
+    local purchasedNodes = {};
     local treeNodes = C_Traits.GetTreeNodes(treeID);
     for _, treeNodeID in ipairs(treeNodes) do
         local treeNode = getNodeInfo(treeNodeID);
@@ -58,6 +59,9 @@ function ImportExport:WriteLoadoutContent(exportStream, treeID)
             exportStream:AddValue(1, isNodePurchased and 1 or 0);
 
             if isNodePurchased then
+                --- @class TalentViewerTWW_PurchasedNode
+                local purchasedNode = { nodeID = treeNode.ID, ranksPurchased = treeNode.ranksPurchased };
+                table.insert(purchasedNodes, purchasedNode);
                 exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
                 if(isPartiallyRanked) then
                     exportStream:AddValue(self.bitWidthRanksPurchased, treeNode.ranksPurchased);
@@ -76,6 +80,8 @@ function ImportExport:WriteLoadoutContent(exportStream, treeID)
             end
         end
     end
+
+    return purchasedNodes;
 end
 
 function ImportExport:GetActiveEntryIndex(treeNode)
@@ -139,55 +145,51 @@ function ImportExport:WriteLevelingExportHeader(exportStream, serializationVersi
 end
 
 --- @param treeID number
---- @param levelingBuild table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
-function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBuild)
-    local purchasedNodesOrder = {};
-    local treeNodes = C_Traits.GetTreeNodes(treeID);
-    local i = 0;
-    for _, treeNodeID in ipairs(treeNodes) do
-        local treeNode = getNodeInfo(treeNodeID);
-        if treeNode.ranksPurchased > 0 then
-            i = i + 1;
-            purchasedNodesOrder[treeNode.ID] = i;
-        end
-    end
-    local numberOfLevelingEntries = 0;
-    for level = 10, ns.MAX_LEVEL do
-        local entry = levelingBuild[level];
-        if entry then
-            numberOfLevelingEntries = numberOfLevelingEntries + 1;
+--- @param levelingBuild table<number, table<number, TalentViewer_LevelingBuildEntry>> # [tree] = {[level] = entry}, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs
+--- @param purchasedNodes table<number, TalentViewerTWW_PurchasedNode> # [orderIndex] = purchasedNode
+function ImportExport:WriteLevelingBuildContent(exportStream, treeID, levelingBuild, purchasedNodes)
+    local map = {};
+    for tree, entries in pairs(levelingBuild) do
+        for level, entry in pairs(entries) do
+            map[tree] = map[tree] or {};
+            map[tree][string.format('%d_%d', entry.nodeID, entry.targetRank)] = level;
         end
     end
 
-    for level = 10, ns.MAX_LEVEL do
-        local entry = levelingBuild[level];
-        exportStream:AddValue(7, entry and purchasedNodesOrder[entry.nodeID] or 0);
-        numberOfLevelingEntries = numberOfLevelingEntries - (entry and 1 or 0);
-        if 0 == numberOfLevelingEntries then
-            break;
+    for _, purchasedNode in ipairs(purchasedNodes) do
+        local nodeInfo = getNodeInfo(purchasedNode.nodeID);
+        if nodeInfo.isSubTreeSelection then
+            exportStream:AddValue(ImportExport.levelingBitWidthData, HERO_SELECTION_NODE_LEVEL);
+        else
+            local tree = nodeInfo.subTreeID or nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+            for rank = 1, purchasedNode.ranksPurchased do
+                local key = string.format('%d_%d', purchasedNode.nodeID, rank);
+                local level = map[tree] and map[tree][key] or 0;
+                exportStream:AddValue(ImportExport.levelingBitWidthData, level);
+            end
         end
     end
 end
 
 function ImportExport:GetLoadoutExportString()
     local exportStream = ExportUtil.MakeExportDataStream();
-    local currentSpecID = self:GetSpecId();
-    local treeId = self:GetTreeId();
+    local currentSpecID = self:GetSpecID();
+    local treeID = self:GetTreeID();
 
     self:WriteLoadoutHeader(exportStream, LOADOUT_SERIALIZATION_VERSION, currentSpecID);
-    self:WriteLoadoutContent(exportStream, treeId);
+    local purchasedNodes = self:WriteLoadoutContent(exportStream, treeID);
 
     local loadoutString = exportStream:GetExportString();
 
     local levelingBuildID = TalentViewer:GetCurrentLevelingBuildID();
     local levelingBuild = TalentViewer:GetLevelingBuild(levelingBuildID);
-    if not levelingBuild or not next(levelingBuild) then
+    if not levelingBuild or not levelingBuild.entries or not next(levelingBuild.entries) then
         return loadoutString;
     end
 
     local levelingExportStream = ExportUtil.MakeExportDataStream();
     self:WriteLevelingExportHeader(levelingExportStream, LEVELING_BUILD_SERIALIZATION_VERSION);
-    self:WriteLevelingBuildContent(levelingExportStream, treeId, levelingBuild);
+    self:WriteLevelingBuildContent(levelingExportStream, treeID, levelingBuild.entries, purchasedNodes);
 
     return LEVELING_EXPORT_STRING_PATERN:format(loadoutString, levelingExportStream:GetExportString());
 end
@@ -213,29 +215,28 @@ function ImportExport:ImportLoadout(importText)
         return false;
     end
 
-    if(specID ~= self:GetSpecId()) then
+    if(specID ~= self:GetSpecID()) then
         TalentViewer:SelectSpec(TalentViewer.cache.specIdToClassIdMap[specID], specID);
     end
 
-    local treeId = self:GetTreeId();
+    local treeId = self:GetTreeID();
 
     local loadoutContent = self:ReadLoadoutContent(importStream, treeId);
     local loadoutEntryInfo = self:ConvertToImportLoadoutEntryInfo(treeId, loadoutContent);
 
+    TalentViewer:ClearLevelingBuild()
     TalentViewer:StopRecordingLevelingBuild();
 
     TalentViewer:GetTalentFrame():ImportLoadout(loadoutEntryInfo);
 
-    local _, _, talentBuild, levelingBuild = importText:find(LEVELING_EXPORT_STRING_PATERN:format("(.*)", "(.*)"):gsub("%-", "%%-"));
-    if levelingBuild then
-        local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuild);
+    local _, _, _, levelingBuildString = importText:find(LEVELING_EXPORT_STRING_PATERN:format("(.*)", "(.*)"):gsub("%-", "%%-"));
+    if levelingBuildString then
+        local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuildString);
         local levelingHeaderValid, levelingSerializationVersion = self:ReadLevelingExportHeader(levelingImportStream);
         if levelingHeaderValid and levelingSerializationVersion == LEVELING_BUILD_SERIALIZATION_VERSION then
-            local levelingBuildEntries = self:ReadLevelingBuildContent(levelingImportStream, loadoutEntryInfo);
-            TalentViewer:ImportLevelingBuild(levelingBuildEntries);
+            local levelingBuild = self:ReadLevelingBuildContent(levelingImportStream, loadoutEntryInfo);
+            TalentViewer:ImportLevelingBuild(levelingBuild);
         end
-    else
-        TalentViewer:ClearLevelingBuild();
     end
 
     return true;
@@ -252,33 +253,38 @@ function ImportExport:ReadLevelingExportHeader(importStream)
 end
 
 --- @param loadoutEntryInfo TalentViewer_LoadoutEntryInfo[]
---- @return table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+--- @return TalentViewer_LevelingBuild
 function ImportExport:ReadLevelingBuildContent(importStream, loadoutEntryInfo)
     local results = {};
+    local selectedSubTreeID;
 
-    local purchasesByNodeID = {};
-    for level = 10, ns.MAX_LEVEL+1 do
-        local success, orderIndex = pcall(importStream.ExtractValue, importStream, 7);
-        if not success or not orderIndex then break; end -- end of stream
+    for _, entry in ipairs(loadoutEntryInfo) do
+        local nodeInfo = getNodeInfo(entry.nodeID);
+        local ranksPurchased = entry.ranksPurchased;
+        for rank = 1, ranksPurchased do
+            local success, level = pcall(importStream.ExtractValue, importStream, ImportExport.levelingBitWidthData);
+            if not success or not level then -- end of stream
+                return results;
+            end
+            if level > 0 and not nodeInfo.isSubTreeSelection then
+                local result = {};
+                result.nodeID = entry.nodeID;
+                result.entryID = entry.isChoiceNode and entry.selectionEntryID;
+                result.targetRank = rank;
 
-        local entry = loadoutEntryInfo[orderIndex];
-        if entry then
-            purchasesByNodeID[entry.nodeID] = entry.ranksPurchased;
-            local result = {};
-            result.nodeID = entry.nodeID;
-            result.entryID = entry.isChoiceNode and entry.selectionEntryID;
-            results[level] = result;
+                local tree = nodeInfo.subTreeID or nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+                results[tree] = results[tree] or {};
+                results[tree][level] = result;
+            elseif nodeInfo.isSubTreeSelection then
+                local entryInfo = TalentViewer:GetTalentFrame():GetAndCacheEntryInfo(entry.selectionEntryID);
+                if entryInfo and entryInfo.subTreeID then
+                    selectedSubTreeID = entryInfo.subTreeID;
+                end
+            end
         end
     end
-    for level = ns.MAX_LEVEL, 9, -1 do
-        local result = results[level];
-        if result then
-            result.targetRank = purchasesByNodeID[result.nodeID];
-            purchasesByNodeID[result.nodeID] = purchasesByNodeID[result.nodeID] - 1;
-        end
-    end
 
-    return results;
+    return { entries = results, selectedSubTreeID = selectedSubTreeID };
 end
 
 function ImportExport:WriteLoadoutHeader(exportStream, serializationVersion, specID)

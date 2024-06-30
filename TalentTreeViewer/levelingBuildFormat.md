@@ -1,8 +1,9 @@
 # Dragonflight Leveling Talent Build export string format
 
-- Version: 1
+- Version: 1 (Used during Dragonflight, for The War Within use version 2+)
 - Date: April 2024
 - Authoritative Source: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer/levelingBuildFormat.md)
+- The War Within version: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer_TWW/levelingBuildFormat.md)
 
 ## Purpose
 The purpose of the export string is to provide a way to save and share the order in which talents are learned while leveling.
@@ -43,7 +44,7 @@ The number of integers in the body must be equal to the number of talents select
 
 #### Example
 Lets say there are 4 talents learned in `<TalentBuild>`, A B C and D.
-Talent A and C are class talents, and ignored by the leveling build, talent D is learned at level 11, and talent C is learned at level 13.
+Talent A and C are class talents, and ignored by the leveling build, talent D is learned at level 11, and talent B is learned at level 13.
 
 This results in a body with the following values (`_` is added for readability) `0b000_0000 0b000_0100 0b000_0000 0b000_0011` (base10 `0 4 0 3`)
 
