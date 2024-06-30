@@ -12,12 +12,10 @@ fi
 
 declare -A locale_files=(
   ["TalentTreeViewer"]="_TalentTreeViewer_locales.lua"
-  ["TalentTreeViewer_TWW"]="_TalentTreeViewer_TWW_locales.lua"
   ["TalentTreeViewer_Loader"]="_TalentTreeViewer_Loader_locales.lua"
 )
 declare -A namespace_root=(
-  ["TalentTreeViewer"]="TalentTreeViewer/"
-  ["TalentTreeViewer_TWW"]="TalentTreeViewer_TWW/"
+  ["TalentTreeViewer"]="TalentTreeViewer/ TalentTreeViewer_TWW/"
   ["TalentTreeViewer_Loader"]="TalentTreeViewer_Loader/"
 )
 
@@ -46,10 +44,10 @@ do_import() {
   esac
 }
 
-echo
-
 for namespace in "${!locale_files[@]}"; do
-  lua .github/scripts/find-locale-strings.lua "${namespace_root[$namespace]}" "${locale_files[$namespace]}"
+  echo
+  echo "Finding strings for $namespace..."
+  lua .github/scripts/find-locale-strings.lua "${locale_files[$namespace]}" ${namespace_root[$namespace]}
   do_import "$namespace" "${locale_files[$namespace]}"
 done
 
