@@ -264,7 +264,7 @@ function ImportExport:ReadLevelingBuildContent(importStream, loadoutEntryInfo)
         for rank = 1, ranksPurchased do
             local success, level = pcall(importStream.ExtractValue, importStream, ImportExport.levelingBitWidthData);
             if not success or not level then -- end of stream
-                return results;
+                return { entries = results, selectedSubTreeID = selectedSubTreeID };
             end
             if level > 0 and not nodeInfo.isSubTreeSelection then
                 local result = {};

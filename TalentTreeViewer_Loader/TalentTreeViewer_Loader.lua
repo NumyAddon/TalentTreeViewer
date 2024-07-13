@@ -2,7 +2,7 @@ local name, _ = ...;
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'only works on Dragonflight and later') return; end
 
---- @class TVLoader
+--- @class TalentViewerLoader
 local TVLoader = {};
 TalentViewerLoader = TVLoader;
 
@@ -140,7 +140,7 @@ function TVLoader:GetLodAddonName()
     return lodAddonName;
 end
 
---- @return TalentViewer
+--- @return TalentViewer|TalentViewerTWW
 function TVLoader:GetTalentViewer()
     self:LoadTalentViewer();
 
