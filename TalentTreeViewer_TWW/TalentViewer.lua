@@ -12,10 +12,10 @@ ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP;
 
 --- @class TalentViewerTWW
 local TalentViewer = {
-	purchasedRanks = {},
-	selectedEntries = {},
-	currencySpending = {},
-	_ns = ns,
+    purchasedRanks = {},
+    selectedEntries = {},
+    currencySpending = {},
+    _ns = ns,
 };
 _G.TalentViewer = TalentViewer;
 
@@ -25,62 +25,60 @@ ns.TalentViewer = TalentViewer;
 
 --- @class TalentViewer_CacheTWW
 local cache = {
-	classNames = {},
-	classFiles = {},
-	classSpecs = {},
-	nodes = {},
-	tierLevel = {},
-	specNames = {},
-	specIndexToIdMap = {},
-	specIdToClassIdMap = {},
-	specIconId = {},
+    classNames = {},
+    classFiles = {},
+    classSpecs = {},
+    nodes = {},
+    tierLevel = {},
+    specNames = {},
+    specIndexToIdMap = {},
+    specIdToClassIdMap = {},
+    specIconId = {},
 };
 TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
 local LibTalentTree = LibStub('LibTalentTree-1.0');
---- @type LibUIDropDownMenuNumy-4.0
-local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name);
 
 local function wipe(table)
-	if table and type(table) == 'table' then
-		_G['wipe'](table);
-	end
+    if table and type(table) == 'table' then
+        _G['wipe'](table);
+    end
 end
 
 ----------------------
 --- Build class / spec cache
 ----------------------
 do
-	for classID = 1, GetNumClasses() do
-		local _;
-		cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
-		cache.specIndexToIdMap[classID] = {};
-		cache.classSpecs[classID] = {};
-		for specIndex = 1, GetNumSpecializationsForClassID(classID) do
-			local specID = GetSpecializationInfoForClassID(classID, specIndex);
-			local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
-			if specName ~= '' then
-				cache.specNames[specID] = specName;
-				cache.classSpecs[classID][specID] = specName;
-				cache.specIndexToIdMap[classID][specIndex] = specID;
-				cache.specIconId[specID] = specIcon;
-				cache.specIdToClassIdMap[specID] = classID;
-			end
-		end
-	end
+    for classID = 1, GetNumClasses() do
+        local _;
+        cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
+        cache.specIndexToIdMap[classID] = {};
+        cache.classSpecs[classID] = {};
+        for specIndex = 1, GetNumSpecializationsForClassID(classID) do
+            local specID = GetSpecializationInfoForClassID(classID, specIndex);
+            local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
+            if specName ~= '' then
+                cache.specNames[specID] = specName;
+                cache.classSpecs[classID][specID] = specName;
+                cache.specIndexToIdMap[classID][specIndex] = specID;
+                cache.specIconId[specID] = specIcon;
+                cache.specIdToClassIdMap[specID] = classID;
+            end
+        end
+    end
 end
 
 local frame = CreateFrame('FRAME')
 local function OnEvent(_, event, ...)
-	if event == 'ADDON_LOADED' then
-		local addonName = ...;
-		if addonName == name then
-			TalentViewer:OnInitialize();
-			if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin(); end
-		end
-	end
+    if event == 'ADDON_LOADED' then
+        local addonName = ...;
+        if addonName == name then
+            TalentViewer:OnInitialize();
+            if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin(); end
+        end
+    end
 end
 frame:HookScript('OnEvent', OnEvent);
 frame:RegisterEvent('ADDON_LOADED');
@@ -91,75 +89,75 @@ frame:RegisterEvent('ADDON_LOADED');
 
 ---@return TalentViewerUIMixinTWW
 function TalentViewer:GetTalentFrame()
-	return TalentViewer_DF.Talents;
+    return TalentViewer_DF.Talents;
 end
 
 function TalentViewer:ApplyCurrencySpending(treeCurrency)
-	local spending = self.currencySpending[treeCurrency.traitCurrencyID] or 0;
-	treeCurrency.spent = spending;
-	treeCurrency.quantity = treeCurrency.maxQuantity - spending;
+    local spending = self.currencySpending[treeCurrency.traitCurrencyID] or 0;
+    treeCurrency.spent = spending;
+    treeCurrency.quantity = treeCurrency.maxQuantity - spending;
 
-	return treeCurrency;
+    return treeCurrency;
 end
 
 --- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
 function TalentViewer:ResetTree(lockLevelingBuild)
-	local talentFrame = self:GetTalentFrame();
-	wipe(self.purchasedRanks);
-	wipe(self.selectedEntries);
-	wipe(self.currencySpending);
-	wipe(talentFrame.edgeRequirementsCache);
-	talentFrame.nodesPerGate = nil;
-	talentFrame.eligibleNodesPerGate = nil;
-	talentFrame:SelectSubTree(nil);
-	talentFrame:SetTalentTreeID(self.treeId, true);
-	talentFrame:UpdateClassVisuals();
-	talentFrame:UpdateSpecBackground();
-	talentFrame:UpdateLevelingBuildHighlights();
-	local isRecordingLevelingBuild = self:IsRecordingLevelingBuild();
-	if not lockLevelingBuild then
+    local talentFrame = self:GetTalentFrame();
+    wipe(self.purchasedRanks);
+    wipe(self.selectedEntries);
+    wipe(self.currencySpending);
+    wipe(talentFrame.edgeRequirementsCache);
+    talentFrame.nodesPerGate = nil;
+    talentFrame.eligibleNodesPerGate = nil;
+    talentFrame:SelectSubTree(nil);
+    talentFrame:SetTalentTreeID(self.treeId, true);
+    talentFrame:UpdateClassVisuals();
+    talentFrame:UpdateSpecBackground();
+    talentFrame:UpdateLevelingBuildHighlights();
+    local isRecordingLevelingBuild = self:IsRecordingLevelingBuild();
+    if not lockLevelingBuild then
         self:ClearLevelingBuild();
         if isRecordingLevelingBuild then
             self:StartRecordingLevelingBuild();
         end
-	end
+    end
 end
 
 function TalentViewer:GetActiveRank(nodeID)
-	return self.purchasedRanks[nodeID] or 0;
+    return self.purchasedRanks[nodeID] or 0;
 end
 
 function TalentViewer:GetSelectedEntryId(nodeID)
-	return self.selectedEntries[nodeID];
+    return self.selectedEntries[nodeID];
 end
 
 function TalentViewer:SetRank(nodeID, rank)
-	local currentRank;
-	repeat
-		currentRank = self.purchasedRanks[nodeID] or 0;
-		if currentRank == rank then return; end
-		if rank > currentRank then
-			TalentViewer:PurchaseRank(nodeID);
-		else
-			TalentViewer:RefundRank(nodeID);
-		end
-	until currentRank == rank;
+    local currentRank;
+    repeat
+        currentRank = self.purchasedRanks[nodeID] or 0;
+        if currentRank == rank then return; end
+        if rank > currentRank then
+            TalentViewer:PurchaseRank(nodeID);
+        else
+            TalentViewer:RefundRank(nodeID);
+        end
+    until currentRank == rank;
 end
 
 function TalentViewer:PurchaseRank(nodeID)
-	self:ReduceCurrency(nodeID);
-	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1;
+    self:ReduceCurrency(nodeID);
+    self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1;
 
-	if self:IsRecordingLevelingBuild() then
+    if self:IsRecordingLevelingBuild() then
         self:RecordLevelingEntry(nodeID, self.purchasedRanks[nodeID]);
     end
 end
 
 function TalentViewer:RefundRank(nodeID)
-	self:RestoreCurrency(nodeID);
-	self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1;
+    self:RestoreCurrency(nodeID);
+    self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1;
 
-	if self:IsRecordingLevelingBuild() then
+    if self:IsRecordingLevelingBuild() then
         self:RemoveLastRecordedLevelingEntry(nodeID);
     end
 end
@@ -171,39 +169,39 @@ function TalentViewer:SetSelection(nodeID, entryID)
         if self:IsRecordingLevelingBuild() then
             self:UpdateRecordedLevelingChoiceEntry(nodeID, entryID);
         end
-	elseif (entryID and not hasPreviousSelection) then
-		self:ReduceCurrency(nodeID);
+    elseif (entryID and not hasPreviousSelection) then
+        self:ReduceCurrency(nodeID);
 
-		if self:IsRecordingLevelingBuild() then
+        if self:IsRecordingLevelingBuild() then
             self:RecordLevelingEntry(nodeID, 1, entryID);
         end
-	elseif (not entryID and hasPreviousSelection) then
-		self:RestoreCurrency(nodeID);
+    elseif (not entryID and hasPreviousSelection) then
+        self:RestoreCurrency(nodeID);
 
-		if self:IsRecordingLevelingBuild() then
+        if self:IsRecordingLevelingBuild() then
             self:RemoveLastRecordedLevelingEntry(nodeID);
         end
-	end
+    end
 
-	self.selectedEntries[nodeID] = entryID;
+    self.selectedEntries[nodeID] = entryID;
 end
 
 function TalentViewer:ReduceCurrency(nodeID)
-	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
-	if costInfo then
-		for _, cost in ipairs(costInfo) do
-			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount;
-		end
-	end
+    local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
+    if costInfo then
+        for _, cost in ipairs(costInfo) do
+            self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount;
+        end
+    end
 end
 
 function TalentViewer:RestoreCurrency(nodeID)
-	local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
-	if costInfo then
-		for _, cost in ipairs(costInfo) do
-			self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount;
-		end
-	end
+    local costInfo = self:GetTalentFrame():GetNodeCost(nodeID);
+    if costInfo then
+        for _, cost in ipairs(costInfo) do
+            self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount;
+        end
+    end
 end
 
 ----------------------
@@ -211,32 +209,32 @@ end
 ----------------------
 
 function TalentViewer:InitSpecSelection()
-	local _, _, classId = UnitClass('player');
-	local currentSpec = GetSpecialization() or 1;
-	local specId = cache.specIndexToIdMap[classId][currentSpec];
-	TalentViewer:SelectSpec(classId, specId);
+    local _, _, classId = UnitClass('player');
+    local currentSpec = GetSpecialization() or 1;
+    local specId = cache.specIndexToIdMap[classId][currentSpec];
+    TalentViewer:SelectSpec(classId, specId);
 end
 
 function TalentViewer:OnInitialize()
-	self.db = TalentTreeViewerDB;
+    self.db = TalentTreeViewerDB;
 
-	if(self.ignoreRestrictionsCheckbox) then
-		self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions);
-	end
+    if(self.ignoreRestrictionsCheckbox) then
+        self.ignoreRestrictionsCheckbox:SetChecked(self.db.ignoreRestrictions);
+    end
 end
 
 function TalentViewer:ImportLoadout(importString)
-	--- @type TalentViewerImportExportTWW
-	local ImportExport = ns.ImportExport;
-	--- @type TalentViewerIcyVeinsImportTWW
-	local IcyVeinsImport = ns.IcyVeinsImport;
+    --- @type TalentViewerImportExportTWW
+    local ImportExport = ns.ImportExport;
+    --- @type TalentViewerIcyVeinsImportTWW
+    local IcyVeinsImport = ns.IcyVeinsImport;
 
-	if TalentViewer_DF:IsShown() then
-		TalentViewer_DF:Raise();
-	else
-		TalentViewer:ToggleTalentView();
-	end
-	if IcyVeinsImport:IsTalentUrl(importString) then
+    if TalentViewer_DF:IsShown() then
+        TalentViewer_DF:Raise();
+    else
+        TalentViewer:ToggleTalentView();
+    end
+    if IcyVeinsImport:IsTalentUrl(importString) then
         IcyVeinsImport:ImportUrl(importString);
     else
         ImportExport:ImportLoadout(importString);
@@ -244,187 +242,207 @@ function TalentViewer:ImportLoadout(importString)
 end
 
 function TalentViewer:ExportLoadout()
-	--- @type TalentViewerImportExportTWW
-	local ImportExport = ns.ImportExport;
+    --- @type TalentViewerImportExportTWW
+    local ImportExport = ns.ImportExport;
 
-	return ImportExport:GetLoadoutExportString();
+    return ImportExport:GetLoadoutExportString();
 end
 
 function TalentViewer:LinkToChat()
-	local exportString = self:ExportLoadout();
-	if not exportString then return; end
+    local exportString = self:ExportLoadout();
+    if not exportString then return; end
 
-	if not TALENT_BUILD_CHAT_LINK_TEXT then
-		if not ChatEdit_InsertLink(exportString) then
-			ChatFrame_OpenChat(exportString);
-		end
-		return;
-	end
+    if not TALENT_BUILD_CHAT_LINK_TEXT then
+        if not ChatEdit_InsertLink(exportString) then
+            ChatFrame_OpenChat(exportString);
+        end
+        return;
+    end
 
-	local talentsTab = self:GetTalentFrame();
+    local talentsTab = self:GetTalentFrame();
 
-	local specName = talentsTab:GetSpecName();
-	local className = talentsTab:GetClassName()
-	local specID = talentsTab:GetSpecID();
-	local classColor = RAID_CLASS_COLORS[select(2, GetClassInfo(talentsTab:GetClassID()))];
-	local level = ns.MAX_LEVEL;
+    local specName = talentsTab:GetSpecName();
+    local className = talentsTab:GetClassName()
+    local specID = talentsTab:GetSpecID();
+    local classColor = RAID_CLASS_COLORS[select(2, GetClassInfo(talentsTab:GetClassID()))];
+    local level = ns.MAX_LEVEL;
 
-	local linkDisplayText = ("[%s]"):format(TALENT_BUILD_CHAT_LINK_TEXT:format(specName, className));
-	local linkText = LinkUtil.FormatLink("talentbuild", linkDisplayText, specID, level, exportString);
-	local chatLink = classColor:WrapTextInColorCode(linkText);
-	if not ChatEdit_InsertLink(chatLink) then
-		ChatFrame_OpenChat(chatLink);
-	end
+    local linkDisplayText = ("[%s]"):format(TALENT_BUILD_CHAT_LINK_TEXT:format(specName, className));
+    local linkText = LinkUtil.FormatLink("talentbuild", linkDisplayText, specID, level, exportString);
+    local chatLink = classColor:WrapTextInColorCode(linkText);
+    if not ChatEdit_InsertLink(chatLink) then
+        ChatFrame_OpenChat(chatLink);
+    end
 end
 
 function TalentViewer:ToggleTalentView()
-	self:InitFrame();
-	TalentViewer_DF:SetShown(not TalentViewer_DF:IsShown());
+    self:InitFrame();
+    TalentViewer_DF:SetShown(not TalentViewer_DF:IsShown());
 end
 
 function TalentViewer:InitFrame()
-	if self.frameInitialized then return; end
-	self.frameInitialized = true;
-	UIPanelUpdateScaleForFit(TalentViewer_DF, 200, 270);
-	table.insert(UISpecialFrames, 'TalentViewer_DF');
-	TalentViewer_DFInset:Hide();
-	self:InitDropdown();
-	self:InitCheckbox();
-	self:InitSpecSelection();
-	self:InitLevelingBuildUIs();
+    if self.frameInitialized then return; end
+    self.frameInitialized = true;
+    UIPanelUpdateScaleForFit(TalentViewer_DF, 200, 270);
+    table.insert(UISpecialFrames, 'TalentViewer_DF');
+    TalentViewer_DFInset:Hide();
+    self:InitDropdown();
+    self:InitCheckbox();
+    self:InitSpecSelection();
+    self:InitLevelingBuildUIs();
 end
 
 --- Reset the talent tree, and select the specified spec
 --- @param classId number
 --- @param specId number
-function TalentViewer:SelectSpec(classId, specId)
-	assert(type(classId) == 'number', 'classId must be a number');
-	assert(type(specId) == 'number', 'specId must be a number');
+function TalentViewer:SelectSpec(classId, specId, skipDropdownUpdate)
+    assert(type(classId) == 'number', 'classId must be a number');
+    assert(type(specId) == 'number', 'specId must be a number');
 
-	self.selectedClassId = classId;
-	self.selectedSpecId = specId;
-	self.treeId = LibTalentTree:GetClassTreeId(classId);
-	self:SetPortraitIcon(specId);
+    self.selectedClassId = classId;
+    self.selectedSpecId = specId;
+    self.treeId = LibTalentTree:GetClassTreeId(classId);
+    self:SetPortraitIcon(specId);
 
-	TalentViewer_DF:SetTitle(string.format(
-		'%s %s - %s',
-		cache.classNames[classId],
-		TALENTS,
-		cache.classSpecs[classId][specId] or ''
-	));
+    TalentViewer_DF:SetTitle(string.format(
+        '%s %s - %s',
+        cache.classNames[classId],
+        TALENTS,
+        cache.classSpecs[classId][specId] or ''
+    ));
+    if not skipDropdownUpdate then
+        self.dropDownButton:PickSpecID(specId);
+    end
 
-	self:ResetTree();
+    self:ResetTree();
 end
 
 function TalentViewer:SetPortraitIcon(specId)
-	local icon = cache.specIconId[specId];
-	TalentViewer_DF:SetPortraitTexCoord(0, 1, 0, 1);
-	TalentViewer_DF:SetPortraitToAsset(icon);
-end
-
-function TalentViewer:MakeDropDownButton()
-	local mainButton = TalentViewer_DF.Talents.TV_DropdownButton;
-	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF);
-
-	mainButton = Mixin(mainButton, DropDownToggleButtonMixin);
-	mainButton:OnLoad_Intrinsic();
-	mainButton:SetScript('OnMouseDown', function(self)
-		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 204, 15, TalentViewer.menuList or nil);
-	end)
-
-	dropDown:Hide();
-
-	return mainButton, dropDown;
-end
-
-function TalentViewer:BuildMenu(setValueFunc, isCheckedFunc)
-	local menu = {}
-	for classId, classSpecs in pairs(cache.classSpecs) do
-		local specMenuList = {}
-		for specId, specName in pairs(classSpecs) do
-			table.insert(specMenuList,{
-				text = string.format(
-					'|T%d:16|t %s',
-					cache.specIconId[specId],
-					specName
-				),
-				arg1 = specId,
-				arg2 = classId,
-				func = setValueFunc,
-				checked = isCheckedFunc,
-			});
-		end
-
-		table.insert(menu, {
-			text = string.format(
-				'|Tinterface/icons/classicon_%s:16|t %s',
-				cache.classFiles[classId],
-				cache.classNames[classId]
-			),
-			hasArrow = true,
-			menuList = specMenuList,
-			checked = isCheckedFunc,
-			arg2 = classId,
-		});
-	end
-
-	return menu;
+    local icon = cache.specIconId[specId];
+    TalentViewer_DF:SetPortraitTexCoord(0, 1, 0, 1);
+    TalentViewer_DF:SetPortraitToAsset(icon);
 end
 
 function TalentViewer:InitCheckbox()
-	if self.ignoreRestrictionsCheckbox then return; end
-	self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions;
-	local checkbox = self.ignoreRestrictionsCheckbox;
-	checkbox.Text:SetText(L['Ignore Restrictions']);
-	if self.db then
-		checkbox:SetChecked(self.db.ignoreRestrictions);
-	end
-	checkbox:SetScript('OnEnter', function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-		GameTooltip_AddNormalLine(GameTooltip, L['Ignore restrictions when selecting talents']);
-		GameTooltip:Show();
-	end);
-	checkbox:SetScript('OnLeave', function(self)
-		GameTooltip:Hide();
-	end);
-	checkbox:SetScript('OnClick', function(button)
-		self.db.ignoreRestrictions = button:GetChecked()
-		self:GetTalentFrame():UpdateTreeCurrencyInfo()
-	end);
+    if self.ignoreRestrictionsCheckbox then return; end
+    self.ignoreRestrictionsCheckbox = TalentViewer_DF.Talents.IgnoreRestrictions;
+    local checkbox = self.ignoreRestrictionsCheckbox;
+    checkbox.Text:SetText(L['Ignore Restrictions']);
+    if self.db then
+        checkbox:SetChecked(self.db.ignoreRestrictions);
+    end
+    checkbox:SetScript('OnEnter', function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip_AddNormalLine(GameTooltip, L['Ignore restrictions when selecting talents']);
+        GameTooltip:Show();
+    end);
+    checkbox:SetScript('OnLeave', function(self)
+        GameTooltip:Hide();
+    end);
+    checkbox:SetScript('OnClick', function(button)
+        self.db.ignoreRestrictions = button:GetChecked()
+        self:GetTalentFrame():UpdateTreeCurrencyInfo()
+    end);
 end
 
 function TalentViewer:InitDropdown()
-	if self.dropDownButton then return; end
-	self.dropDownButton, self.dropDown = self:MakeDropDownButton();
+    if self.dropDownButton then return; end
+    --- @type BUTTON
+    self.dropDownButton = TalentViewer_DF.Talents.TV_DropdownButton;
 
-	if C_AddOns.IsAddOnLoaded('ElvUI') then
-		self:ApplyElvUISkin();
-	end
+    self.dropDownButton:SetupMenu(function(owner, rootDescription)
+        rootDescription:CreateTitle(L['Select another Specialization']);
+        self:BuildMenu(rootDescription);
+    end);
+    self.dropDownButton:SetSelectionText(function(selections)
+        return selections[2].text;
+    end);
 
-	local function setValue(_, specId, classId)
-		LibDD:CloseDropDownMenus();
+    local specList = {};
+    local specListReverse = {};
+    local index = 1;
+    for _, classSpecs in pairs(cache.classSpecs) do
+        for specID, _ in pairs(classSpecs) do
+            specList[index] = specID;
+            specListReverse[specID] = index;
+            index = index + 1;
+        end
+    end
 
-		TalentViewer:SelectSpec(classId, specId);
-	end
+    self.dropDownButton:EnableMouseWheel(true);
+    function self.dropDownButton:Increment()
+        local currentSpecIndex = specListReverse[TalentViewer.selectedSpecId];
+        local nextSpecIndex = currentSpecIndex + 1;
+        if nextSpecIndex > #specList then
+            nextSpecIndex = 1;
+        end
+        self:PickSpecID(specList[nextSpecIndex]);
+    end
+    function self.dropDownButton:Decrement()
+        local currentSpecIndex = specListReverse[TalentViewer.selectedSpecId];
+        local previousSpecIndex = currentSpecIndex - 1;
+        if previousSpecIndex < 1 then
+            previousSpecIndex = #specList;
+        end
+        self:PickSpecID(specList[previousSpecIndex]);
+    end
+    function self.dropDownButton:PickSpecID(specID)
+        MenuUtil.TraverseMenu(self:GetMenuDescription(), function(description)
+            if description.data == specID then self:Pick(description, MenuInputContext.None) end
+        end);
+    end
 
-	local isChecked = function(button)
-		return button.arg2 == TalentViewer.selectedClassId and (not button.arg1 or button.arg1 == TalentViewer.selectedSpecId);
-	end
+    if C_AddOns.IsAddOnLoaded('ElvUI') then
+        self:ApplyElvUISkin();
+    end
+end
 
-	self.menuList = self:BuildMenu(setValue, isChecked);
-	LibDD:EasyMenu(self.menuList, self.dropDown, self.dropDown, 0, 0);
+function TalentViewer:BuildMenu(rootDescription)
+    local function isClassSelected(classID)
+        return classID == TalentViewer.selectedClassId;
+    end
+    local function isSpecSelected(specID)
+        return specID == TalentViewer.selectedSpecId;
+    end
+    local function selectSpec(specID)
+        self:SelectSpec(cache.specIdToClassIdMap[specID], specID, true);
+    end
+
+    for classID, classSpecs in pairs(cache.classSpecs) do
+        local elementDescription = rootDescription:CreateRadio(
+            string.format(
+                '|Tinterface/icons/classicon_%s:16|t %s',
+                cache.classFiles[classID],
+                cache.classNames[classID]
+            ),
+            isClassSelected,
+            nil,
+            classID
+        );
+        for specID, specName in pairs(classSpecs) do
+            elementDescription:CreateRadio(
+                string.format(
+                    '|T%d:16|t %s',
+                    cache.specIconId[specID],
+                    specName
+                ),
+                isSpecSelected,
+                selectSpec,
+                specID
+            );
+        end
+    end
 end
 
 function TalentViewer:ApplyElvUISkin()
-	if true then return; end
-	if self.skinned then return; end
-	self.skinned = true;
-	local S = unpack(ElvUI):GetModule('Skins');
+    if true then return; end
+    if self.skinned then return; end
+    self.skinned = true;
+    local S = unpack(ElvUI):GetModule('Skins');
 
-	S:HandleDropDownBox(self.dropDown);
-	S:HandleButton(self.dropDownButton);
+    S:HandleButton(self.dropDownButton);
 
-	-- loosely based on ElvUI's talent skinning code
+    -- loosely based on ElvUI's talent skinning code
 
 end
 
@@ -462,12 +480,12 @@ end
 --- @param buildID number
 --- @return TalentViewer_LevelingBuild?
 function TalentViewer:GetLevelingBuild(buildID)
-	local build = self.levelingBuilds[self.selectedSpecId] and self.levelingBuilds[self.selectedSpecId][buildID] or nil;
-	if not build then return nil; end
+    local build = self.levelingBuilds[self.selectedSpecId] and self.levelingBuilds[self.selectedSpecId][buildID] or nil;
+    if not build then return nil; end
 
-	local buildEntries = {};
-	for tree, entries in pairs(build.entries) do
-	    buildEntries[tree] = {};
+    local buildEntries = {};
+    for tree, entries in pairs(build.entries) do
+        buildEntries[tree] = {};
         local startingOffset = build.startingOffset[tree] or 70;
         local multiplier = (tree <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
         for i, entry in ipairs(entries) do
@@ -492,8 +510,8 @@ function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
     self.recordingInfo.startingOffset = buildInfo.startingOffset;
     self.recordingInfo.active = false;
     self.recordingInfo.buildReference = buildInfo;
-	self:GetTalentFrame():SetLevelingBuildID(buildID);
-	self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
+    self:GetTalentFrame():SetLevelingBuildID(buildID);
+    self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
     self.recordingInfo.active = true;
 
     self:GetTalentFrame().LevelingBuildLevelSlider:SetValue(level);
@@ -744,100 +762,80 @@ function TalentViewer:InitLevelingBuildUIs()
     end);
 
 
-    local dropDownButton = self:GetTalentFrame().LevelingBuildDropdownButton;
-    dropDownButton:HookScript('OnEnter', function()
-        GameTooltip:SetOwner(dropDownButton, 'ANCHOR_RIGHT', 0, 0);
+    local dropdownButton = self:GetTalentFrame().LevelingBuildDropdownButton;
+    dropdownButton:HookScript('OnEnter', function()
+        GameTooltip:SetOwner(dropdownButton, 'ANCHOR_RIGHT', 0, 0);
         GameTooltip:SetText(L['Leveling build']);
         GameTooltip:AddLine(L['Select a leveling build to apply']);
         GameTooltip:AddLine(L['This will reset your current talent choices!']);
         GameTooltip:Show();
     end);
-    dropDownButton:HookScript('OnLeave', function()
+    dropdownButton:HookScript('OnLeave', function()
         GameTooltip:Hide();
     end);
+    dropdownButton:OverrideText(L['Select Recorded Build']);
 
-	local dropDown = LibDD:Create_UIDropDownMenu(nil, TalentViewer_DF);
+    local function isBuildSelected(buildID)
+        return self:GetCurrentLevelingBuildID() == buildID;
+    end
+    local function selectBuild(buildID)
+        self:ApplyLevelingBuild(buildID, currentValue, true);
+        self:StopRecordingLevelingBuild();
+    end
+    dropdownButton:SetupMenu(function(owner, rootDescription)
+        rootDescription:CreateTitle(L['Leveling builds can be saved and loaded with TalentLoadoutManager'], WHITE_FONT_COLOR);
+        rootDescription:CreateTitle(L['You can also export/import leveling builds, or link them in chat'], WHITE_FONT_COLOR);
 
-	dropDownButton = Mixin(dropDownButton, DropDownToggleButtonMixin);
-	dropDownButton:OnLoad_Intrinsic();
-	local function buildMenu()
-	    self.menuListLevelingBuilds = {};
-	    local menu = self.menuListLevelingBuilds;
-	    table.insert(menu, {
-	        text = L['Leveling builds can be saved and loaded with TalentLoadoutManager'],
-	        notClickable = true,
-            notCheckable = true,
-	    });
-	    table.insert(menu, {
-	        text = L['You can also export/import leveling builds, or link them in chat'],
-	        notClickable = true,
-            notCheckable = true,
-	    });
-	    if (not C_AddOns.IsAddOnLoaded('TalentLoadoutManager')) then
-            table.insert(menu, {
-                text = L['Click to download TalentLoadoutManager'],
-                notCheckable = true,
-                func = function()
-                    StaticPopup_Show('TalentViewerExportDialog', nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
-                end,
-            });
+        if (not C_AddOns.IsAddOnLoaded('TalentLoadoutManager')) then
+            rootDescription:CreateButton(L['Click to |cFF3333FFdownload|r TalentLoadoutManager'], function()
+                StaticPopup_Show('TalentViewerExportDialog', nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
+            end);
         end
         for buildID, buildInfo in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
-            table.insert(menu, {
-                text = string.format(
+            rootDescription:CreateRadio(
+                string.format(
                     L['Leveling build %d (%d points spent)'],
                     buildID,
                     buildInfo.entriesCount
                 ),
-                func = function(_, buildID)
-                    self:ApplyLevelingBuild(buildID, currentValue, true);
-                    self:StopRecordingLevelingBuild();
-                end,
-                checked = self:GetCurrentLevelingBuildID() == buildID,
-                arg1 = buildID,
-            });
+                isBuildSelected,
+                selectBuild,
+                buildID
+            );
         end
-	end
-	dropDownButton:SetScript('OnMouseDown', function(self)
-	    buildMenu();
-		LibDD:ToggleDropDownMenu(1, nil, dropDown, self, 5, 0, TalentViewer.menuListLevelingBuilds or nil);
-	end)
-
-	dropDown:Hide();
-	buildMenu();
-	LibDD:EasyMenu(self.menuListLevelingBuilds, dropDown, dropDown, 0, 0);
+    end);
 end
 
 -------------------------
 --- Button highlights ---
 -------------------------
 function TalentViewer:SetActionBarHighlights(talentButton, shown)
-	local spellID = talentButton:GetSpellID();
-	if (spellID and talentButton:GetActionBarStatus() == ActionButtonUtil.ActionBarActionStatus.NotMissing) then
-		self:HandleBlizzardActionButtonHighlights(shown and spellID);
-		self:HandleLibActionButtonHighlights(shown and spellID);
-	end
+    local spellID = talentButton:GetSpellID();
+    if (spellID and talentButton:GetActionBarStatus() == ActionButtonUtil.ActionBarActionStatus.NotMissing) then
+        self:HandleBlizzardActionButtonHighlights(shown and spellID);
+        self:HandleLibActionButtonHighlights(shown and spellID);
+    end
 end
 
 function TalentViewer:HandleBlizzardActionButtonHighlights(spellID)
-	local ON_BAR_HIGHLIGHT_MARKS = spellID and tInvert(C_ActionBar.FindSpellActionButtons(spellID) or {}) or {};
-	for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-		if ( actionButton.SpellHighlightTexture and actionButton.SpellHighlightAnim ) then
-			SharedActionButton_RefreshSpellHighlight(actionButton, ON_BAR_HIGHLIGHT_MARKS[actionButton.action]);
-		end
-	end
+    local ON_BAR_HIGHLIGHT_MARKS = spellID and tInvert(C_ActionBar.FindSpellActionButtons(spellID) or {}) or {};
+    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+        if ( actionButton.SpellHighlightTexture and actionButton.SpellHighlightAnim ) then
+            SharedActionButton_RefreshSpellHighlight(actionButton, ON_BAR_HIGHLIGHT_MARKS[actionButton.action]);
+        end
+    end
 end
 
 function TalentViewer:HandleLibActionButtonHighlights(spellID)
-	local libName = 'LibActionButton-1.';
-	for mayor, lib in LibStub:IterateLibraries() do
-		if mayor:sub(1, string.len(libName)) == libName then
-			for button in pairs(lib:GetAllButtons()) do
-				if button.SpellHighlightTexture and button.SpellHighlightAnim and button.GetSpellId then
-					local shown = spellID and button:GetSpellId() == spellID;
-					SharedActionButton_RefreshSpellHighlight(button, shown);
-				end
-			end
-		end
-	end
+    local libName = 'LibActionButton-1.';
+    for mayor, lib in LibStub:IterateLibraries() do
+        if mayor:sub(1, string.len(libName)) == libName then
+            for button in pairs(lib:GetAllButtons()) do
+                if button.SpellHighlightTexture and button.SpellHighlightAnim and button.GetSpellId then
+                    local shown = spellID and button:GetSpellId() == spellID;
+                    SharedActionButton_RefreshSpellHighlight(button, shown);
+                end
+            end
+        end
+    end
 end

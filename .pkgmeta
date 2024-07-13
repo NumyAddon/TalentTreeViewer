@@ -26,4 +26,3 @@ externals:
     TalentTreeViewer_TWW/libs/LibTalentTree-1.0:
         url: https://github.com/NumyAddon/LibTalentTree-1.0
         curse-slug: libtalenttree
-    TalentTreeViewer_TWW/libs/LibUIDropDownMenu: https://github.com/NumyAddon/LibUIDropDownMenu

@@ -204,9 +204,7 @@
 
             <DropdownButton parentKey="TV_DropdownButton" inherits="WowStyle1DropdownTemplate" text="TALENT_TREE_VIEWER_LOCALE_SELECT_SPECIALIZATION">
                 <KeyValues>
-                    <KeyValue key="menuPoint" type="string" value="BOTTOMLEFT"/>
-                    <KeyValue key="menuPointX" type="number" value="0"/>
-                    <KeyValue key="menuPointY" type="number" value="0"/>
+                    <KeyValue key="menuPoint" type="string" value="BOTTOMRIGHT"/>
                     <KeyValue key="menuRelativePoint" type="string" value="TOPRIGHT"/>
                 </KeyValues>
 
