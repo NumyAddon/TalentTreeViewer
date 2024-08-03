@@ -7,7 +7,7 @@ local IcyVeinsImport = ns.IcyVeinsImport
 local TalentViewer = ns.TalentViewer
 
 --- @type LibTalentTree-1.0
-local libTT = LibStub('LibTalentTree-1.0');
+local LibTT = LibStub('LibTalentTree-1.0');
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name)
 
@@ -16,16 +16,19 @@ IcyVeinsImport.bitWidthNodeIndex = 6;
 
 --- @param text string
 --- @return boolean
+--- @public
 function IcyVeinsImport:IsTalentUrl(text)
     -- example URL https://www.icy-veins.com/wow/the-war-within-talent-calculator#seg1-seg2-seg3-seg4-seg5
     return not not text:match('^https?://www%.icy%-veins%.com/wow/the%-war%-within%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$');
 end
 
+--- @private
 function IcyVeinsImport:ShowImportError(errorString)
     StaticPopup_Show("TALENT_VIEWER_LOADOUT_IMPORT_ERROR_DIALOG", errorString);
 end
 
 --- @param fullUrl string
+--- @public
 function IcyVeinsImport:ImportUrl(fullUrl)
     if not self:IsTalentUrl(fullUrl) then
         self:ShowImportError("Invalid URL");
@@ -61,7 +64,7 @@ function IcyVeinsImport:ParseUrl(url)
     local specID = tonumber(specIDStream:ExtractValue(self.bitWidthSpecID));
     local classID = specID and C_SpecializationInfo.GetClassIDFromSpecID(specID);
 
-    local treeID = classID and libTT:GetClassTreeId(classID);
+    local treeID = classID and LibTT:GetClassTreeId(classID);
 
     if not classID or not specID or not classString or not specString or not treeID then
         return nil;
@@ -72,7 +75,7 @@ function IcyVeinsImport:ParseUrl(url)
     local selectedSubTreeID;
     if heroStream:GetNumberOfBits() > 0 then
         local heroTreeIndex = heroStream:ExtractValue(1) + 1;
-        selectedSubTreeID = libTT:GetSubTreeIDsForSpecID(specID)[heroTreeIndex];
+        selectedSubTreeID = LibTT:GetSubTreeIDsForSpecID(specID)[heroTreeIndex];
     end
 
     local classNodes, specNodes, heroNodes = self:GetClassAndSpecNodeIDs(specID, treeID, selectedSubTreeID);
@@ -91,6 +94,8 @@ end
 --- @param levelMultiplier number
 --- @param dataStream ImportDataStreamMixin
 --- @param nodes number[]
+--- @return table<number, TalentViewer_LevelingBuildEntry> # [level] = entry
+--- @private
 function IcyVeinsImport:ParseDataSegment(startingLevel, levelMultiplier, dataStream, nodes)
     local level = startingLevel;
     local rankByNodeID = {};
@@ -111,7 +116,7 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, levelMultiplier, dataStr
                 }, 'Error while importing IcyVeins URL: Could not find node for index')
             end
         else
-            local nodeInfo = libTT:GetNodeInfo(nodeID);
+            local nodeInfo = LibTT:GetNodeInfo(nodeID);
             local isChoiceNode = nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection;
             local entry
             if isChoiceNode then
@@ -132,11 +137,13 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, levelMultiplier, dataStr
     return levelingOrder;
 end
 
+--- @private
 IcyVeinsImport.classAndSpecNodeCache = {};
 --- @param specID number
 --- @param treeID number
 --- @param selectedSubTreeID number?
 --- @return number[], number[], nil|number[] # classNodes, specNodes, heroNodes (if applicable)
+--- @private
 function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID, selectedSubTreeID)
     if self.classAndSpecNodeCache[specID] then
         local classNodes, specNodes, heroNodesByTree = unpack(self.classAndSpecNodeCache[specID]);
@@ -150,8 +157,8 @@ function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID, selectedSubTreeID
     local heroNodesByTree = {};
 
     for _, nodeID in ipairs(nodes or {}) do
-        local nodeInfo = libTT:GetNodeInfo(nodeID);
-        if libTT:IsNodeVisibleForSpec(specID, nodeID) and nodeInfo.maxRanks > 0 then
+        local nodeInfo = LibTT:GetNodeInfo(nodeID);
+        if LibTT:IsNodeVisibleForSpec(specID, nodeID) and nodeInfo.maxRanks > 0 then
             if nodeInfo.isSubTreeSelection then
                 -- skip
             elseif nodeInfo.subTreeID then
