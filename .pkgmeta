@@ -1,7 +1,6 @@
 package-as: TalentTreeViewer
 
 move-folders:
-    TalentTreeViewer/TalentTreeViewer: TalentTreeViewer
     TalentTreeViewer/TalentTreeViewer_TWW: TalentTreeViewer_TWW
     TalentTreeViewer/TalentTreeViewer_Loader: TalentTreeViewer_Loader
 
@@ -11,14 +10,6 @@ externals:
     TalentTreeViewer_Loader/libs/LibDBIcon-1.0: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
     TalentTreeViewer_Loader/libs/LibDataBroker-1.1: https://github.com/tekkub/libdatabroker-1-1
     TalentTreeViewer_Loader/libs/AceLocale-3.0: https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
-
-    TalentTreeViewer/libs/LibStub: https://repos.wowace.com/wow/ace3/trunk/LibStub
-    TalentTreeViewer/libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
-    TalentTreeViewer/libs/AceLocale-3.0: https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
-    TalentTreeViewer/libs/LibTalentTree-1.0:
-        url: https://github.com/NumyAddon/LibTalentTree-1.0
-        curse-slug: libtalenttree
-    TalentTreeViewer/libs/LibUIDropDownMenu: https://github.com/NumyAddon/LibUIDropDownMenu
 
     TalentTreeViewer_TWW/libs/LibStub: https://repos.wowace.com/wow/ace3/trunk/LibStub
     TalentTreeViewer_TWW/libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
