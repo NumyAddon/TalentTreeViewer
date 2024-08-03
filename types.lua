@@ -1,22 +1,24 @@
+---@meta _
+
 --- inherits ClassTalentTalentsTabMixin
---- @class TalentViewerUIMixin: FRAME
---- @field EnumerateAllTalentButtons fun(): fun(): TalentViewer_TalentButtonMixin
---- @field GetTalentButtonByNodeID fun(self: TalentViewerUIMixin, nodeID: number): nil|TalentViewer_TalentButtonMixin
+--- @class TalentViewerUIMixinTWW: FRAME
+--- @field EnumerateAllTalentButtons fun(): fun(): TalentViewer_TalentButtonMixinTWW
+--- @field GetTalentButtonByNodeID fun(self: TalentViewerUIMixinTWW, nodeID: number): nil|TalentViewer_TalentButtonMixinTWW
 --- @field StartRecordingButton BUTTON
 --- @field StopRecordingButton BUTTON
 --- @field LevelingBuildLevelSlider SLIDER
 --- @field LevelingBuildDropDownButton BUTTON
 
---- @class TalentViewer_TalentButtonMixin: BUTTON
---- @field talentFrame TalentViewerUIMixin
---- @field LevelingOrder TalentViewer_LevelingOrderFrame
+--- @class TalentViewer_TalentButtonMixinTWW: BUTTON
+--- @field talentFrame TalentViewerUIMixinTWW
+--- @field LevelingOrder TalentViewer_LevelingOrderFrameTWW
 --- @field GetNodeID fun(): number
 --- @field GetNodeInfo fun(): TVNodeInfo
 
---- @class TalentViewer_LevelingOrderFrame: FRAME
+--- @class TalentViewer_LevelingOrderFrameTWW: FRAME
 --- @field Text FontString
 --- @field order number[]
---- @field GetParent fun(): TalentViewer_TalentButtonMixin
+--- @field GetParent fun(): TalentViewer_TalentButtonMixinTWW
 
 --- @class TalentViewer_LevelingBuildInfoContainer
 --- @field entries table<number, TalentViewer_LevelingBuildEntry[]> # [tree] = entries, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs; entries are indexed by order, not level
@@ -39,3 +41,28 @@
 --- @field selectionEntryID number
 --- @field isChoiceNode boolean
 
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin)
+---@class ImportDataStreamMixin
+---@field dataValues number[]
+---@field currentIndex number
+---@field currentExtractedBits number
+---@field currentRemainingValue number
+ImportDataStreamMixin = {}
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:Init)
+---@param exportString string
+function ImportDataStreamMixin:Init(exportString) end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:ExtractValue)
+---@param bitWidth number
+---@return number?
+function ImportDataStreamMixin:ExtractValue(bitWidth) end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:GetNumberOfBits)
+---@return number
+function ImportDataStreamMixin:GetNumberOfBits() end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ExportUtil.MakeImportDataStream)
+---@param exportString string
+---@return ImportDataStreamMixin
+function ExportUtil.MakeImportDataStream(exportString) end

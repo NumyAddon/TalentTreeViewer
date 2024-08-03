@@ -887,7 +887,7 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
             button:SetOrder({});
         end
         for _, entries in pairs(info.entries) do
-            for _, entryInfo in pairs(entries) do
+            for entryLevel, entryInfo in pairs(entries) do
                 local nodeID = entryInfo.nodeID;
                 local button = self:GetTalentButtonByNodeID(nodeID);
                 if not button then
@@ -902,6 +902,13 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
                 else
                     button.LevelingOrder:AppendToOrder(entryLevel);
                 end
+            end
+        end
+        if info.selectedSubTreeID then
+            local nodeID = LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self:GetSpecID(), info.selectedSubTreeID);
+            local button = nodeID and self:GetTalentButtonByNodeID(nodeID);
+            if button then
+                button.LevelingOrder:AppendToOrder(71);
             end
         end
 
