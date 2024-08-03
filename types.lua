@@ -41,6 +41,10 @@
 --- @field selectionEntryID number
 --- @field isChoiceNode boolean
 
+-------------------
+----- FrameXML ----
+-------------------
+
 ---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin)
 ---@class ImportDataStreamMixin
 ---@field dataValues number[]
