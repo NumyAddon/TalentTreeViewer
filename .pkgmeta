@@ -1,8 +1,8 @@
-package-as: TalentTreeViewer
+package-as: TalentTreeViewer_Loader
 
 move-folders:
-    TalentTreeViewer/TalentTreeViewer_TWW: TalentTreeViewer_TWW
-    TalentTreeViewer/TalentTreeViewer_Loader: TalentTreeViewer_Loader
+    TalentTreeViewer_Loader/TalentTreeViewer_TWW: TalentTreeViewer_TWW
+    TalentTreeViewer_Loader/TalentTreeViewer_Loader: TalentTreeViewer_Loader
 
 externals:
     TalentTreeViewer_Loader/libs/LibStub: https://repos.wowace.com/wow/ace3/trunk/LibStub
