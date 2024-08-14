@@ -51,19 +51,39 @@ end
 --- Build class / spec cache
 ----------------------
 do
+    local initialSpecs = {
+        [1] = 1446,
+        [2] = 1451,
+        [3] = 1448,
+        [4] = 1453,
+        [5] = 1452,
+        [6] = 1455,
+        [7] = 1444,
+        [8] = 1449,
+        [9] = 1454,
+        [10] = 1450,
+        [11] = 1447,
+        [12] = 1456,
+        [13] = 1465,
+    };
     for classID = 1, GetNumClasses() do
         local _;
         cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
         cache.specIndexToIdMap[classID] = {};
         cache.classSpecs[classID] = {};
-        for specIndex = 1, GetNumSpecializationsForClassID(classID) do
-            local specID = GetSpecializationInfoForClassID(classID, specIndex);
+        local numSpecs = GetNumSpecializationsForClassID(classID);
+        for specIndex = 1, (numSpecs + 1) do
+            local specID = GetSpecializationInfoForClassID(classID, specIndex) or initialSpecs[classID];
             local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
+            local isInitial = specIndex > numSpecs;
+            if isInitial then
+                specName = 'Initial ' .. cache.classNames[classID];
+            end
             if specName ~= '' then
                 cache.specNames[specID] = specName;
                 cache.classSpecs[classID][specID] = specName;
                 cache.specIndexToIdMap[classID][specIndex] = specID;
-                cache.specIconId[specID] = specIcon;
+                cache.specIconId[specID] = not isInitial and specIcon or ('interface/icons/classicon_' .. cache.classFiles[classID]);
                 cache.specIdToClassIdMap[specID] = classID;
             end
         end
@@ -361,8 +381,8 @@ function TalentViewer:InitDropdown()
     local specList = {};
     local specListReverse = {};
     local index = 1;
-    for _, classSpecs in pairs(cache.classSpecs) do
-        for specID, _ in pairs(classSpecs) do
+    for classID, _ in ipairs(cache.classSpecs) do
+        for _, specID in ipairs(cache.specIndexToIdMap[classID]) do
             specList[index] = specID;
             specListReverse[specID] = index;
             index = index + 1;
@@ -408,23 +428,22 @@ function TalentViewer:BuildMenu(rootDescription)
         self:SelectSpec(cache.specIdToClassIdMap[specID], specID, true);
     end
 
-    for classID, classSpecs in pairs(cache.classSpecs) do
+    for classID, _ in ipairs(cache.classSpecs) do
+        local nameFormat = '|T%s:16|t %s';
         local elementDescription = rootDescription:CreateRadio(
-            string.format(
-                '|Tinterface/icons/classicon_%s:16|t %s',
-                cache.classFiles[classID],
+            nameFormat:format(
+                'interface/icons/classicon_' .. cache.classFiles[classID],
                 cache.classNames[classID]
             ),
             isClassSelected,
             nil,
             classID
         );
-        for specID, specName in pairs(classSpecs) do
+        for _, specID in ipairs(cache.specIndexToIdMap[classID]) do
             elementDescription:CreateRadio(
-                string.format(
-                    '|T%d:16|t %s',
+                nameFormat:format(
                     cache.specIconId[specID],
-                    specName
+                    cache.specNames[specID]
                 ),
                 isSpecSelected,
                 selectSpec,
