@@ -183,7 +183,17 @@ function ImportExport:GetLoadoutExportString()
 
     local levelingBuildID = TalentViewer:GetCurrentLevelingBuildID();
     local levelingBuild = TalentViewer:GetLevelingBuild(levelingBuildID);
-    if not levelingBuild or not levelingBuild.entries or not next(levelingBuild.entries) then
+    if not levelingBuild or not levelingBuild.entries then
+        return loadoutString;
+    end
+    local hasEntries = false;
+    for _, entries in pairs(levelingBuild.entries) do
+        if entries and next(entries) then
+            hasEntries = true;
+            break;
+        end
+    end
+    if not hasEntries then
         return loadoutString;
     end
 
