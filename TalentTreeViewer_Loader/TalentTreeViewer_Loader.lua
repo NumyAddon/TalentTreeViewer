@@ -84,6 +84,7 @@ end
 
 function TVLoader:AddButtonToBlizzardTalentFrame()
     local button = CreateFrame('Button', nil, PlayerSpellsFrame, 'UIPanelButtonTemplate');
+    PlayerSpellsFrame.TalentTreeViewer_OpenViewerButton = button;
     button:SetText('Talent Viewer');
     button:SetSize(100, 22);
     button:SetPoint('TOPRIGHT', PlayerSpellsFrame, 'TOPRIGHT', -44, 0);
