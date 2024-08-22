@@ -476,6 +476,7 @@ function TalentViewerUIMixin:AfterRankChange(nodeID)
     if subTreeID then
         RunNextFrame(function()
             local talentButton = self:GetTalentButtonByNodeID(nodeID);
+            if not talentButton then return; end
             local isActive = self:GetActiveSubTreeID() == subTreeID;
             talentButton:UpdateSubTreeActiveVisual(isActive);
         end);
