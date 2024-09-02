@@ -76,8 +76,9 @@ do
 end
 
 
+--- @type ClassTalentsFrameMixin
 local parentMixin = ClassTalentsFrameMixin;
---- @class TalentViewerUIMixinTWW
+--- @class TalentViewerUIMixinTWW: ClassTalentsFrameMixin
 TalentViewer_ClassTalentsFrameMixin = deepCopy(parentMixin);
 
 --- @class TalentViewerUIMixinTWW
