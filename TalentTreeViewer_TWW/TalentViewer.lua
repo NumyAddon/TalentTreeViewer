@@ -34,6 +34,7 @@ local cache = {
     specIndexToIdMap = {},
     specIdToClassIdMap = {},
     specIconId = {},
+    initialSpecs = {},
 };
 TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
@@ -66,6 +67,14 @@ do
         [12] = 1456,
         [13] = 1465,
     };
+    cache.initialSpecIDtoClassID = tInvert(initialSpecs);
+    local initialClassID = GetNumClasses() + 1;
+    cache.initialFakeClassID = initialClassID;
+    cache.classNames[initialClassID] = L['Initial Specializations'];
+    cache.classFiles[initialClassID] = ''; -- results in no texture shown
+    cache.specIndexToIdMap[initialClassID] = {};
+    cache.classSpecs[initialClassID] = {};
+
     for classID = 1, GetNumClasses() do
         local _;
         cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
@@ -77,14 +86,16 @@ do
             local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
             local isInitial = specIndex > numSpecs;
             if isInitial then
-                specName = 'Initial ' .. cache.classNames[classID];
+                specName = L['Initial %s']:format(cache.classNames[classID]);
+                specIndex = classID;
+                classID = initialClassID;
             end
             if specName ~= '' then
                 cache.specNames[specID] = specName;
                 cache.classSpecs[classID][specID] = specName;
                 cache.specIndexToIdMap[classID][specIndex] = specID;
-                cache.specIconId[specID] = not isInitial and specIcon or ('interface/icons/classicon_' .. cache.classFiles[classID]);
-                cache.specIdToClassIdMap[specID] = classID;
+                cache.specIconId[specID] = not isInitial and specIcon or ('interface/icons/classicon_' .. cache.classFiles[specIndex]);
+                cache.specIdToClassIdMap[specID] = not isInitial and classID or specIndex;
             end
         end
     end
@@ -419,7 +430,7 @@ end
 
 function TalentViewer:BuildMenu(rootDescription)
     local function isClassSelected(classID)
-        return classID == TalentViewer.selectedClassId;
+        return classID == (cache.initialSpecIDtoClassID[TalentViewer.selectedSpecId] and cache.initialFakeClassID or TalentViewer.selectedClassId);
     end
     local function isSpecSelected(specID)
         return specID == TalentViewer.selectedSpecId;
@@ -429,6 +440,7 @@ function TalentViewer:BuildMenu(rootDescription)
     end
 
     for classID, _ in ipairs(cache.classSpecs) do
+        print(classID)
         local nameFormat = '|T%s:16|t %s';
         local elementDescription = rootDescription:CreateRadio(
             nameFormat:format(
