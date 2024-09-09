@@ -440,7 +440,6 @@ function TalentViewer:BuildMenu(rootDescription)
     end
 
     for classID, _ in ipairs(cache.classSpecs) do
-        print(classID)
         local nameFormat = '|T%s:16|t %s';
         local elementDescription = rootDescription:CreateRadio(
             nameFormat:format(
