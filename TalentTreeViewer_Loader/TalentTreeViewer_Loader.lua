@@ -142,7 +142,7 @@ function TVLoader:GetLodAddonName()
     return lodAddonName;
 end
 
---- @return TalentViewer|TalentViewerTWW
+--- @return TalentViewerTWW
 function TVLoader:GetTalentViewer()
     self:LoadTalentViewer();
 
