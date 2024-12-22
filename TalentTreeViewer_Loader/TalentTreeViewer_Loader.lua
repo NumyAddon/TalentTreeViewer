@@ -50,6 +50,7 @@ function TVLoader:OnInitialize()
                 if IsShiftKeyDown() then
                     self.db.ldbOptions.hide = true;
                     LibDBIcon:Hide(name);
+                    print(L['Minimap button hidden. Use |cffeda55f/tv reset|r to restore.']);
 
                     return;
                 end
