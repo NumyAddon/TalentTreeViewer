@@ -2,11 +2,23 @@
 ## Title: TalentTree Viewer (TWW UI)
 ## Notes: View any spec's talent trees from any character. This module is only for The War Within!
 ## Author: Numy
-## IconTexture: Interface\Addons\TalentTreeViewer\media\icon
+## IconTexture: Interface\Addons\TalentTreeViewer_TWW\media\icon
 ## Version: @project-version@
 ## X-Curse-Project-ID: 678279
 ## RequiredDeps: Blizzard_PlayerSpells, TalentTreeViewer_Loader
 ## LoadOnDemand: 1
+## Category-enUS: Combat
+## Category-deDE: Kampf
+## Category-esES: Combate
+## Category-esMX: Combate
+## Category-frFR: Combat
+## Category-itIT: Combattimento
+## Category-koKR: 전투
+## Category-ptBR: Combate
+## Category-ruRU: Бой
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Group: TalentTreeViewer_Loader
 
 libs\load_libs.xml
 
