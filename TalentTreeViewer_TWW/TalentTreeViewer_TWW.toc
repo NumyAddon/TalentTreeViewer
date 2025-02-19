@@ -5,6 +5,7 @@
 ## IconTexture: Interface\Addons\TalentTreeViewer_TWW\media\icon
 ## Version: @project-version@
 ## X-Curse-Project-ID: 678279
+## X-Wago-ID: mKOvjD6x
 ## RequiredDeps: Blizzard_PlayerSpells, TalentTreeViewer_Loader
 ## LoadOnDemand: 1
 ## Category-enUS: Combat

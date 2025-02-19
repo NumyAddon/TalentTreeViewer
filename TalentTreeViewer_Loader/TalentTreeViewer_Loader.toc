@@ -6,6 +6,7 @@
 ## Version: @project-version@
 ## SavedVariables: TalentTreeViewerDB
 ## X-Curse-Project-ID: 678279
+## X-Wago-ID: mKOvjD6x
 ## OptionalDeps: BlizzMove
 ## Category-enUS: Combat
 ## Category-deDE: Kampf
