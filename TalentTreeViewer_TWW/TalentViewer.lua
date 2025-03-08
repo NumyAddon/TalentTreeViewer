@@ -332,7 +332,7 @@ function TalentViewer:SelectSpec(classId, specId, skipDropdownUpdate)
 
     self.selectedClassId = classId;
     self.selectedSpecId = specId;
-    self.treeId = LibTalentTree:GetClassTreeId(classId);
+    self.treeId = LibTalentTree:GetClassTreeID(classId);
     self:SetPortraitIcon(specId);
 
     TalentViewer_DF:SetTitle(string.format(

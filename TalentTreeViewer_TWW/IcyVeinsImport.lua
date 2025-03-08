@@ -64,7 +64,7 @@ function IcyVeinsImport:ParseUrl(url)
     local specID = tonumber(specIDStream:ExtractValue(self.bitWidthSpecID));
     local classID = specID and C_SpecializationInfo.GetClassIDFromSpecID(specID);
 
-    local treeID = classID and LibTT:GetClassTreeId(classID);
+    local treeID = classID and LibTT:GetClassTreeID(classID);
 
     if not classID or not specID or not classString or not specString or not treeID then
         return nil;

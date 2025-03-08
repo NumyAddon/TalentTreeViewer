@@ -51,7 +51,7 @@ do
     local nodeEdgesCache = {};
     function getNodeEdges(nodeID)
         if not nodeEdgesCache[nodeID] then
-            nodeEdgesCache[nodeID] = LibTalentTree:GetNodeEdges(TalentViewer.treeId, nodeID) or emptyTable;
+            nodeEdgesCache[nodeID] = LibTalentTree:GetNodeEdges(nodeID) or emptyTable;
         end
         return nodeEdgesCache[nodeID];
     end
@@ -184,8 +184,8 @@ function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
         local hasActiveIncomingEdge = false
         local hasInactiveIncomingEdge = false
         for _, incomingNodeId in ipairs(incomingEdges) do
-            local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, incomingNodeId)
-            if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, incomingNodeId) end
+            local nodeInfo = LibTalentTree:GetLibNodeInfo(incomingNodeId)
+            if not nodeInfo then nodeInfo = LibTalentTree:GetNodeInfo(incomingNodeId) end
             if nodeInfo and LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, incomingNodeId) then
                 local isGranted = LibTalentTree:IsNodeGrantedForSpec(TalentViewer.selectedSpecId, incomingNodeId)
                 local isChoiceNode = self:IsChoiceNode(nodeInfo)
@@ -213,10 +213,10 @@ end
 function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
     local function GetNodeInfoCallback(nodeID)
         --- @class TVNodeInfo: libNodeInfo
-        local nodeInfo = LibTalentTree:GetLibNodeInfo(TalentViewer.treeId, nodeID)
+        local nodeInfo = LibTalentTree:GetLibNodeInfo(nodeID)
         if not nodeInfo then
             --- @class TVNodeInfo: libNodeInfo
-            nodeInfo = LibTalentTree:GetNodeInfo(TalentViewer.treeId, nodeID)
+            nodeInfo = LibTalentTree:GetNodeInfo(nodeID)
             if DevTool and DevTool.AddData then
                 DevTool:AddData(
                     {
@@ -559,7 +559,7 @@ end
 function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
     local function GetTreeCurrencyInfoCallback(specID)
         local treeCurrencyInfo = {};
-        local treeID = LibTalentTree:GetClassTreeId(tvCache.specIdToClassIdMap[specID]);
+        local treeID = LibTalentTree:GetClassTreeID(tvCache.specIdToClassIdMap[specID]);
         local currencies = LibTalentTree:GetTreeCurrencies(treeID);
         for i, currencyInfo in ipairs(currencies) do
             if currencyInfo.isClassCurrency then
@@ -718,10 +718,10 @@ function TalentViewerUIMixin:GetActiveSubTreeID()
 end
 
 function TalentViewerUIMixin:OnSubTreeSelectionChange()
-    local subTreeIDs = LibTalentTree:GetSubTreeIdsForSpecId(self:GetSpecID());
+    local subTreeIDs = LibTalentTree:GetSubTreeIDsForSpecID(self:GetSpecID());
     for _, subTreeID in ipairs(subTreeIDs) do
         local isActive = self:GetActiveSubTreeID() == subTreeID;
-        local nodes = LibTalentTree:GetSubTreeNodeIds(subTreeID);
+        local nodes = LibTalentTree:GetSubTreeNodeIDs(subTreeID);
         for _, nodeID in ipairs(nodes) do
             local button = self:GetTalentButtonByNodeID(nodeID);
             if button then
