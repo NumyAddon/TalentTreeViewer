@@ -29,7 +29,6 @@ local cache = {
     classFiles = {},
     classSpecs = {},
     nodes = {},
-    tierLevel = {},
     specNames = {},
     specIndexToIdMap = {},
     specIdToClassIdMap = {},
@@ -326,6 +325,7 @@ end
 --- Reset the talent tree, and select the specified spec
 --- @param classId number
 --- @param specId number
+--- @param skipDropdownUpdate boolean?
 function TalentViewer:SelectSpec(classId, specId, skipDropdownUpdate)
     assert(type(classId) == 'number', 'classId must be a number');
     assert(type(specId) == 'number', 'specId must be a number');
@@ -378,7 +378,7 @@ end
 
 function TalentViewer:InitDropdown()
     if self.dropDownButton then return; end
-    --- @type BUTTON
+    --- @type WowStyle1DropdownTemplate
     self.dropDownButton = TalentViewer_DF.Talents.TV_DropdownButton;
 
     self.dropDownButton:SetupMenu(function(owner, rootDescription)
@@ -428,12 +428,13 @@ function TalentViewer:InitDropdown()
     end
 end
 
+--- @param rootDescription RootMenuDescriptionProxy
 function TalentViewer:BuildMenu(rootDescription)
     local function isClassSelected(classID)
-        return classID == (cache.initialSpecIDtoClassID[TalentViewer.selectedSpecId] and cache.initialFakeClassID or TalentViewer.selectedClassId);
+        return classID == (cache.initialSpecIDtoClassID[self.selectedSpecId] and cache.initialFakeClassID or self.selectedClassId);
     end
     local function isSpecSelected(specID)
-        return specID == TalentViewer.selectedSpecId;
+        return specID == self.selectedSpecId;
     end
     local function selectSpec(specID)
         self:SelectSpec(cache.specIdToClassIdMap[specID], specID, true);
