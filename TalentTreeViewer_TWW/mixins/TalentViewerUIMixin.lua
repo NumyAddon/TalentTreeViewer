@@ -292,6 +292,15 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
     return GetOrCreateTableEntryByCallback(self.nodeInfoCache, nodeID, GetNodeInfoCallback);
 end
 
+function TalentViewerUIMixin:GetAndCacheSubTreeInfo(subTreeID)
+	local function GetSubTreeInfoCallback()
+        self.dirtySubTreeIDSet[subTreeID] = nil;
+		return LibTalentTree:GetSubTreeInfo(subTreeID)
+	end
+
+	return GetOrCreateTableEntryByCallback(self.subTreeInfoCache, subTreeID, GetSubTreeInfoCallback);
+end
+
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
     local function GetCondInfoCallback(condID)
         local condInfo = {

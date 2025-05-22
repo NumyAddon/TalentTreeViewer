@@ -241,7 +241,7 @@ end
 function TalentViewer:InitSpecSelection()
     local _, _, classId = UnitClass('player');
     local currentSpec = GetSpecialization() or 1;
-    local specId = cache.specIndexToIdMap[classId][currentSpec];
+    local specId = cache.specIndexToIdMap[classId][currentSpec] or cache.specIndexToIdMap[classId][1];
     TalentViewer:SelectSpec(classId, specId);
 end
 
