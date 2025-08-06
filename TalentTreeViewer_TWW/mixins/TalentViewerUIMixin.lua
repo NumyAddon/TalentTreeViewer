@@ -937,20 +937,24 @@ do
     StaticPopupDialogs['TalentViewerExportDialog'] = {
         text = L['CTRL-C to copy'],
         button1 = CLOSE,
+        --- @param dialog StaticPopupTemplate
+        --- @param data string
         OnShow = function(dialog, data)
             local function HidePopup()
                 dialog:Hide();
             end
-            dialog.editBox:SetScript('OnEscapePressed', HidePopup);
-            dialog.editBox:SetScript('OnEnterPressed', HidePopup);
-            dialog.editBox:SetScript('OnKeyUp', function(_, key)
-                if IsControlKeyDown() and key == 'C' then
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            editBox:SetScript('OnEscapePressed', HidePopup);
+            editBox:SetScript('OnEnterPressed', HidePopup);
+            editBox:SetScript('OnKeyUp', function(_, key)
+                if IsControlKeyDown() and (key == 'C' or key == 'X') then
                     HidePopup();
                 end
             end);
-            dialog.editBox:SetMaxLetters(0);
-            dialog.editBox:SetText(data);
-            dialog.editBox:HighlightText();
+            editBox:SetMaxLetters(0);
+            editBox:SetText(data);
+            editBox:HighlightText();
         end,
         hasEditBox = true,
         editBoxWidth = 240,
@@ -963,19 +967,25 @@ do
         text = HUD_CLASS_TALENTS_IMPORT_DIALOG_TITLE .. '\n' .. L['Icy-veins calculator links are also supported!'],
         button1 = OKAY,
         button2 = CLOSE,
+        --- @param dialog StaticPopupTemplate
         OnAccept = function(dialog)
-            TalentViewer:ImportLoadout(dialog.editBox:GetText());
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            TalentViewer:ImportLoadout(editBox:GetText());
             dialog:Hide();
         end,
+        --- @param dialog StaticPopupTemplate
         OnShow = function(dialog)
             local function HidePopup()
                 dialog:Hide();
             end
             local function OnEnter()
-                dialog.button1:Click();
+                dialog:GetButtons()[1]:Click();
             end
-            dialog.editBox:SetScript('OnEscapePressed', HidePopup);
-            dialog.editBox:SetScript('OnEnterPressed', OnEnter);
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            editBox:SetScript('OnEscapePressed', HidePopup);
+            editBox:SetScript('OnEnterPressed', OnEnter);
         end,
         hasEditBox = true,
         editBoxWidth = 240,
