@@ -229,7 +229,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
                 );
             end
             if not nodeInfo then
-                error('no nodeinfo for nodeID '.. nodeID..' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID());
+                error('no nodeinfo for nodeID ' .. nodeID .. ' treeID ' .. TalentViewer.treeId .. ' specID ' .. self:GetSpecID());
             end
             return nodeInfo;
         end
@@ -254,6 +254,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
             or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(nodeID));
         nodeInfo.currentRank = nodeInfo.activeRank;
         nodeInfo.ranksPurchased = not isGranted and nodeInfo.currentRank or 0;
+        nodeInfo.ranksIncreased = 0; -- only applicable to legion remix artifacts currently
         nodeInfo.isAvailable = isAvailable;
         nodeInfo.canPurchaseRank = isAvailable and meetsEdgeRequirements and not isGranted and ((TalentViewer.purchasedRanks[nodeID] or 0) < nodeInfo.maxRanks)
         nodeInfo.canRefundRank = not isGranted;
@@ -293,12 +294,12 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
 end
 
 function TalentViewerUIMixin:GetAndCacheSubTreeInfo(subTreeID)
-	local function GetSubTreeInfoCallback()
+    local function GetSubTreeInfoCallback()
         self.dirtySubTreeIDSet[subTreeID] = nil;
-		return LibTalentTree:GetSubTreeInfo(subTreeID)
-	end
+        return LibTalentTree:GetSubTreeInfo(subTreeID)
+    end
 
-	return GetOrCreateTableEntryByCallback(self.subTreeInfoCache, subTreeID, GetSubTreeInfoCallback);
+    return GetOrCreateTableEntryByCallback(self.subTreeInfoCache, subTreeID, GetSubTreeInfoCallback);
 end
 
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
@@ -447,7 +448,7 @@ function TalentViewerUIMixin:UpdateTalentButtonPosition(talentButton)
         local panOffsetMultiplier = 10;
         posX = posX + basePanOffsetX * panOffsetMultiplier;
         posY = posY + basePanOffsetY * panOffsetMultiplier;
-		TalentButtonUtil.ApplyPosition(talentButton, self, posX, posY);
+        TalentButtonUtil.ApplyPosition(talentButton, self, posX, posY);
     end
 end
 
