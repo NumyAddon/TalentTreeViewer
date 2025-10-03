@@ -79,7 +79,7 @@ do
         cache.classNames[classID], cache.classFiles[classID], _ = GetClassInfo(classID);
         cache.specIndexToIdMap[classID] = {};
         cache.classSpecs[classID] = {};
-        local numSpecs = GetNumSpecializationsForClassID(classID);
+        local numSpecs = C_SpecializationInfo.GetNumSpecializationsForClassID(classID);
         for specIndex = 1, (numSpecs + 1) do
             local specID = GetSpecializationInfoForClassID(classID, specIndex) or initialSpecs[classID];
             local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
@@ -240,7 +240,7 @@ end
 
 function TalentViewer:InitSpecSelection()
     local _, _, classId = UnitClass('player');
-    local currentSpec = GetSpecialization() or 1;
+    local currentSpec = C_SpecializationInfo.GetSpecialization() or 1;
     local specId = cache.specIndexToIdMap[classId][currentSpec] or cache.specIndexToIdMap[classId][1];
     TalentViewer:SelectSpec(classId, specId);
 end
