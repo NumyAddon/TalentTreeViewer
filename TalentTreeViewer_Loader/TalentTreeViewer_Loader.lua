@@ -17,7 +17,7 @@ frame:RegisterEvent('ADDON_LOADED');
 function TVLoader:ADDON_LOADED(_, addonName)
     if addonName == name then
         self:OnInitialize();
-        if(C_AddOns.IsAddOnLoaded('BlizzMove')) then self:RegisterToBlizzMove(); end
+        if (C_AddOns.IsAddOnLoaded('BlizzMove')) then self:RegisterToBlizzMove(); end
     end
     if addonName == 'Blizzard_PlayerSpells' then
         self:AddButtonToBlizzardTalentFrame();

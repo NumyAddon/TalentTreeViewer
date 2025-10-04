@@ -4,6 +4,9 @@ local ns = select(2, ...)
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
 
+local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink
+local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat
+
 ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31;
 ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30;
 ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = 10;
