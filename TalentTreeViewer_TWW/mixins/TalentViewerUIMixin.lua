@@ -586,15 +586,17 @@ function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
                     spent = 0,
                     traitCurrencyID = currencyInfo.traitCurrencyID
                 };
-            elseif currencyInfo.subTreeID then
+            elseif currencyInfo.subTreeIDs then
                 treeCurrencyInfo[i] = {
                     maxQuantity = currencyInfo.maxQuantity,
                     quantity = currencyInfo.quantity,
                     spent = currencyInfo.spent,
                     traitCurrencyID = currencyInfo.traitCurrencyID,
-                    subTreeID = currencyInfo.subTreeID,
+                    subTreeIDs = currencyInfo.subTreeIDs,
                 };
-                treeCurrencyInfo[currencyInfo.subTreeID] = treeCurrencyInfo[i];
+                for _, subTreeID in ipairs(currencyInfo.subTreeIDs) do
+                    treeCurrencyInfo[subTreeID] = treeCurrencyInfo[i];
+                end
             else
                 error('unexpected currency, currencyID: ' .. currencyInfo.traitCurrencyID .. ' treeID: ' .. treeID);
             end
