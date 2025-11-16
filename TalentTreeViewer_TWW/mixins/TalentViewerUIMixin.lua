@@ -14,9 +14,9 @@ local LibTalentTree = LibStub('LibTalentTree-1.0');
 
 local L = LibStub('AceLocale-3.0'):GetLocale(name);
 
-local SELECTION_NODE_POS_X = 7500;
+local SELECTION_NODE_POS_X = 6700;
 local SELECTION_NODE_POS_Y = 4200;
-local SUB_TREE_OFFSET_X = 8100;
+local SUB_TREE_OFFSET_X = 7600;
 local SUB_TREE_OFFSET_Y_TOP_TREE = 1500;
 local SUB_TREE_OFFSET_Y_BOTTOM_TREE = 4500;
 do
