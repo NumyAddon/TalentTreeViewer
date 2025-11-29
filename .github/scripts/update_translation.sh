@@ -1,5 +1,5 @@
 #!/bin/bash
-# Thanks to Nevcairiel @ https://github.com/Nevcairiel/Bartender4/blob/master/locale/wowace-locale-import.sh
+# Inspired by https://github.com/Nevcairiel/Bartender4/blob/master/locale/wowace-locale-import.sh
 
 cf_token=
 
@@ -45,7 +45,7 @@ do_import() {
 }
 
 for namespace in "${!locale_files[@]}"; do
-  echo
+echo
   echo "Finding strings for $namespace..."
   lua .github/scripts/find-locale-strings.lua "${locale_files[$namespace]}" ${namespace_root[$namespace]}
   do_import "$namespace" "${locale_files[$namespace]}"
