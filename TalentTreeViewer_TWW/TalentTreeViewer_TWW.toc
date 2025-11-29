@@ -1,4 +1,4 @@
-## Interface: @toc-version-retail@,@toc-version-midnight@
+## Interface: @toc-version-retail@,@toc-version-midnight@,120000
 ## Title: TalentTree Viewer (TWW UI)
 ## Notes: View any spec's talent trees from any character. This module is only for The War Within!
 ## Author: Numy
