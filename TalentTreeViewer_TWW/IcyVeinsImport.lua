@@ -1,4 +1,6 @@
-local name, ns = ...
+local name = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 --- @class TalentViewerIcyVeinsImportTWW
 local IcyVeinsImport = ns.IcyVeinsImport

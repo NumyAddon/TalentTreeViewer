@@ -1,21 +1,22 @@
-local name = ...
---- @class TalentViewer_NSTWW
-local ns = select(2, ...)
+local name = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
-if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'requires Dragonflight to work') return end
+local isMidnight = select(4, GetBuildInfo()) >= 120000;
 
-local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink
-local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat
+local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink;
+local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat;
 
-ns.MAX_LEVEL_CLASS_CURRENCY_CAP = 31;
-ns.MAX_LEVEL_SPEC_CURRENCY_CAP = 30;
-ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = 10;
+ns.MAX_LEVEL_CLASS_CURRENCY_CAP = isMidnight and 34 or 31;
+ns.MAX_LEVEL_SPEC_CURRENCY_CAP = isMidnight and 34 or 30;
+ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = isMidnight and 13 or 10;
 ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP + ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
 ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP;
 
 --- @class TalentViewerTWW
 local TalentViewer = {
     purchasedRanks = {},
+    --- @type table<number, number> # [nodeID] = entryID
     selectedEntries = {},
     currencySpending = {},
     _ns = ns,
@@ -25,6 +26,15 @@ _G.TalentViewer = TalentViewer;
 ns.ImportExport = {};
 ns.IcyVeinsImport = {};
 ns.TalentViewer = TalentViewer;
+
+TalentViewer.Enum = {
+    --- @enum TalentViewer_Enum_TreeType
+    TreeType = {
+        Class = 1,
+        Spec = 2,
+        SubTree = 3,
+    },
+};
 
 --- @class TalentViewer_CacheTWW
 local cache = {
@@ -37,6 +47,12 @@ local cache = {
     specIdToClassIdMap = {},
     specIconId = {},
     initialSpecs = {},
+    --- @type table<TalentViewer_Enum_TreeType, table<number, number>> # [treeType][level] = currencyAmount
+    currencyAtLevel = {
+        [TalentViewer.Enum.TreeType.Class] = {},
+        [TalentViewer.Enum.TreeType.Spec] = {},
+        [TalentViewer.Enum.TreeType.SubTree] = {},
+    },
 };
 TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
@@ -109,7 +125,6 @@ local function OnEvent(_, event, ...)
         local addonName = ...;
         if addonName == name then
             TalentViewer:OnInitialize();
-            if(C_AddOns.IsAddOnLoaded('ElvUI')) then TalentViewer:ApplyElvUISkin(); end
         end
     end
 end
@@ -120,7 +135,7 @@ frame:RegisterEvent('ADDON_LOADED');
 --- Talent Tree Utilities ---
 -----------------------------
 
----@return TalentViewerUIMixinTWW
+--- @return TalentViewer_ClassTalentsFrameTemplate
 function TalentViewer:GetTalentFrame()
     return TalentViewer_DF.Talents;
 end
@@ -237,6 +252,74 @@ function TalentViewer:RestoreCurrency(nodeID)
     end
 end
 
+--- @param spent number
+--- @param treeType TalentViewer_Enum_TreeType
+--- @return number requiredLevel
+function TalentViewer:GetRequiredLevelForCurrencySpent(spent, treeType)
+    local requiredLevel;
+    if self.Enum.TreeType.Class == treeType then
+        -- starts at 8 (so that first talent point results in level 10)
+        -- 10-70 = spendingUnderOrEqual31 * 2
+        -- 81-90 = spendingOver31 * 3
+        -- ignore apex talents for now
+        if spent > 31 then
+            requiredLevel = 79 + ((spent - 31) * 3);
+        else
+            requiredLevel = 8 + (spent * 2);
+        end
+    elseif self.Enum.TreeType.SubTree == treeType then
+        -- starts at 70 (so that first talent point results in level 71)
+        -- 71-80 = spendingUnderOrEqual10 * 1
+        -- 81-90 = spendingOver10 * 3
+        if spent > 10 then
+            requiredLevel = 80 + ((spent - 10) * 3);
+        else
+            requiredLevel = 70 + spent;
+        end
+    elseif self.Enum.TreeType.Spec == treeType then
+        -- if apex talent selected: minimum level is 80 regardless of spending
+        -- starts at 9 (so that first talent point results in level 11)
+        -- 11-70 = spendingUnderOrEqual30 * 2
+        -- 81-90 = spendingOver30 * 3
+        if spent > 30 then
+            requiredLevel = 78 + ((spent - 30) * 3);
+        else
+            requiredLevel = 9 + (spent * 2);
+        end
+    else
+        error('Invalid currency type: ' .. tostring(treeType));
+    end
+
+    return math.max(10, requiredLevel);
+end
+
+--- @param level number
+--- @param treeType TalentViewer_Enum_TreeType
+--- @return number currencyAmount
+function TalentViewer:GetCurrencyAtLevel(level, treeType)
+    if not self.cache.currencyAtLevel[treeType][level] then
+        local maxCurrency;
+        if self.Enum.TreeType.Class == treeType then
+            maxCurrency = ns.MAX_LEVEL_CLASS_CURRENCY_CAP;
+        elseif self.Enum.TreeType.Spec == treeType then
+            maxCurrency = ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
+        elseif self.Enum.TreeType.SubTree == treeType then
+            maxCurrency = ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
+        end
+        for currencyAmount = 0, maxCurrency do
+            local requiredLevel = self:GetRequiredLevelForCurrencySpent(currencyAmount, treeType);
+            self.cache.currencyAtLevel[treeType][requiredLevel] = currencyAmount;
+        end
+        for lvl = 10, ns.MAX_LEVEL do
+            if not self.cache.currencyAtLevel[treeType][lvl] then
+                self.cache.currencyAtLevel[treeType][lvl] = self.cache.currencyAtLevel[treeType][lvl - 1] or 0;
+            end
+        end
+    end
+
+    return self.cache.currencyAtLevel[treeType][level] or 0;
+end
+
 ----------------------
 --- UI Interaction ---
 ----------------------
@@ -318,7 +401,7 @@ function TalentViewer:InitFrame()
     self.frameInitialized = true;
     UIPanelUpdateScaleForFit(TalentViewer_DF, 200, 270);
     table.insert(UISpecialFrames, 'TalentViewer_DF');
-    TalentViewer_DFInset:Hide();
+    TalentViewer_DF.Inset:Hide();
     self:InitDropdown();
     self:InitCheckbox();
     self:InitSpecSelection();
@@ -425,10 +508,6 @@ function TalentViewer:InitDropdown()
             if description.data == specID then self:Pick(description, MenuInputContext.None) end
         end);
     end
-
-    if C_AddOns.IsAddOnLoaded('ElvUI') then
-        self:ApplyElvUISkin();
-    end
 end
 
 --- @param rootDescription RootMenuDescriptionProxy
@@ -468,38 +547,28 @@ function TalentViewer:BuildMenu(rootDescription)
     end
 end
 
-function TalentViewer:ApplyElvUISkin()
-    if true then return; end
-    if self.skinned then return; end
-    self.skinned = true;
-    local S = unpack(ElvUI):GetModule('Skins');
-
-    S:HandleButton(self.dropDownButton);
-
-    -- loosely based on ElvUI's talent skinning code
-
-end
-
 -----------------------
 --- Leveling builds ---
 -----------------------
+--- @type TalentViewer_LevelingBuildInfoContainer
 local defaultRecordingInfo = {
     active = true,
     buildID = 0, -- matches #levelingBuilds, effectively an auto increment
-    startingOffset = { -- startingOffset = level at which entries[1] is learned - 1; so that level = startingOffset + index
-        [1] = 10 - 2, -- class startingOffset
-        [2] = 11 - 2, -- spec startingOffset
+    currencyOffset = { -- the amount of currency already spent before the first recorded entry
+        [TalentViewer.Enum.TreeType.Class] = 0,
+        [TalentViewer.Enum.TreeType.Spec] = 0,
         -- hero spec trees are not pre-allocated
     },
     entries = {
-        [1] = {}, -- class entries
-        [2] = {}, -- spec entries
+        [TalentViewer.Enum.TreeType.Class] = {},
+        [TalentViewer.Enum.TreeType.Spec] = {},
         -- hero spec trees are not pre-allocated
     },
     entriesCount = 0,
 };
 --- @type table<number, table<number, TalentViewer_LevelingBuildInfoContainer>> # [specID][buildID][specOrClass] = entries (specOrClass is 1 for class, 2 for spec)
 TalentViewer.levelingBuilds = {};
+--- @type TalentViewer_LevelingBuildInfoContainer
 TalentViewer.recordingInfo = CreateFromMixins(defaultRecordingInfo);
 
 function TalentViewer:GetCurrentLevelingBuildID()
@@ -520,10 +589,11 @@ function TalentViewer:GetLevelingBuild(buildID)
     local buildEntries = {};
     for tree, entries in pairs(build.entries) do
         buildEntries[tree] = {};
-        local startingOffset = build.startingOffset[tree] or 70;
-        local multiplier = (tree <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
+        local currencyOffset = build.currencyOffset[tree] or 0;
+        local treeType = (tree > 2) and TalentViewer.Enum.TreeType.SubTree or tree;
         for i, entry in ipairs(entries) do
-            buildEntries[tree][startingOffset + (i * multiplier)] = entry;
+            local level = self:GetRequiredLevelForCurrencySpent(currencyOffset + i, treeType);
+            buildEntries[tree][level] = entry;
         end
     end
 
@@ -541,7 +611,7 @@ function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
     self.recordingInfo.buildID = buildID;
     self.recordingInfo.entries = buildInfo.entries;
     self.recordingInfo.entriesCount = buildInfo.entriesCount;
-    self.recordingInfo.startingOffset = buildInfo.startingOffset;
+    self.recordingInfo.currencyOffset = buildInfo.currencyOffset;
     self.recordingInfo.active = false;
     self.recordingInfo.buildReference = buildInfo;
     self:GetTalentFrame():SetLevelingBuildID(buildID);
@@ -557,28 +627,18 @@ function TalentViewer:ImportLevelingBuild(levelingBuild)
     local selectedSubTreeID = levelingBuild.selectedSubTreeID;
     self:ClearLevelingBuild();
     for tree, entries in pairs(buildEntries) do
-        local baseStartingOffset;
-        local multiplier = 2;
-        if tree == 1 then
-            baseStartingOffset = 10;
-        elseif tree == 2 then
-            baseStartingOffset = 11;
-        else
-            baseStartingOffset = 71;
-            multiplier = 1;
-        end
-        baseStartingOffset = baseStartingOffset - (1 * multiplier)
-        local startingOffset;
+        local treeType = (tree > 2) and TalentViewer.Enum.TreeType.SubTree or tree;
+        local currencyOffset;
         for level = 10, ns.MAX_LEVEL do
             local entry = entries[level];
             if entry then
-                if not startingOffset then
-                    startingOffset= level - (1 * multiplier);
+                if not currencyOffset then
+                    currencyOffset = math.max(0, self:GetCurrencyAtLevel(level, treeType) - 1);
                 end
                 self:RecordLevelingEntry(entry.nodeID, entry.targetRank, entry.entryID);
             end
         end
-        self.recordingInfo.startingOffset[tree] = startingOffset or baseStartingOffset;
+        self.recordingInfo.currencyOffset[tree] = currencyOffset or 0;
     end
     if selectedSubTreeID then
         local nodeID, subTreeEntryID = LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self.selectedSpecId, selectedSubTreeID);
@@ -595,29 +655,14 @@ function TalentViewer:StartRecordingLevelingBuild()
     if next(self:GetCurrentLevelingBuild() or {}) then
         self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), ns.MAX_LEVEL, true);
     else
-        self:RecalculateCurrentStartingOffsets();
+        self:UpdateCurrencyOffsetsForRecordingBuild();
     end
 end
 
-function TalentViewer:RecalculateCurrentStartingOffsets()
-    if not self:GetTalentFrame().treeCurrencyInfo then return; end
-    local classCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[1];
-    if classCurrencyInfo and classCurrencyInfo.traitCurrencyID then
-        local amount = classCurrencyInfo and classCurrencyInfo.quantity or 0
-        local requiredLevel = 8;
-        local spent = (ns.MAX_LEVEL_CLASS_CURRENCY_CAP) - amount;
-        requiredLevel = math.max(defaultRecordingInfo.startingOffset[1], requiredLevel + (spent * 2));
-
-        self.recordingInfo.startingOffset[1] = requiredLevel;
-    end
-    local specCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[2];
-    if specCurrencyInfo and specCurrencyInfo.traitCurrencyID then
-        local amount = specCurrencyInfo and specCurrencyInfo.quantity or 0
-        local requiredLevel = 9;
-        local spent = (ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
-        requiredLevel = math.max(defaultRecordingInfo.startingOffset[1], requiredLevel + (spent * 2));
-
-        self.recordingInfo.startingOffset[2] = requiredLevel;
+function TalentViewer:UpdateCurrencyOffsetsForRecordingBuild()
+    for tree, _ in pairs(self.recordingInfo.currencyOffset) do
+        local treeCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[tree];
+        self.recordingInfo.currencyOffset[tree] = treeCurrencyInfo and treeCurrencyInfo.spent or 0;
     end
 end
 
@@ -640,14 +685,16 @@ function TalentViewer:ClearLevelingBuild()
         return;
     end
     self.recordingInfo = CopyTable(defaultRecordingInfo);
+    self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId] + 1;
     --- @type TalentViewer_LevelingBuildInfoContainer
     local info = {
+        active = true,
+        buildID = self.recordingInfo.buildID,
         entries = self.recordingInfo.entries,
-        startingOffset = self.recordingInfo.startingOffset,
+        currencyOffset = self.recordingInfo.currencyOffset,
         entriesCount = 0,
     };
     table.insert(self.levelingBuilds[self.selectedSpecId], info);
-    self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId];
 
     self:StartRecordingLevelingBuild();
 end
@@ -663,7 +710,7 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
     local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
     if nodeInfo.isSubTreeSelection then
         local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
-        button.LevelingOrder:SetOrder({71});
+        button.LevelingOrder:SetOrder({ 71 });
         local entryInfo = entryID and self:GetTalentFrame():GetAndCacheEntryInfo(entryID);
         self.recordingInfo.selectedSubTreeID = entryInfo and entryInfo.subTreeID;
         self.recordingInfo.buildReference.selectedSubTreeID = self.recordingInfo.selectedSubTreeID;
@@ -672,7 +719,7 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
     end;
     self.recordingInfo.entriesCount = self.recordingInfo.entriesCount + 1;
     self.recordingInfo.buildReference.entriesCount = self.recordingInfo.entriesCount;
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
     self.recordingInfo.entries[indexKey] = self.recordingInfo.entries[indexKey] or {};
     local entries = self.recordingInfo.entries[indexKey];
     table.insert(entries, {
@@ -680,9 +727,9 @@ function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
         targetRank = targetRank,
         entryID = entryID,
     });
-    local baseLevel = self.recordingInfo.startingOffset[indexKey] or 70;
-    local multiplier = (indexKey <= 2) and 2 or 1; -- class/spec nodes are earned every 2 levels, hero talents every level
-    local level = baseLevel + (#entries * multiplier);
+    local treeType = (nodeInfo.tvSubTreeID and self.Enum.TreeType.SubTree)
+        or (nodeInfo.isClassNode and self.Enum.TreeType.Class or self.Enum.TreeType.Spec);
+    local level = self:GetRequiredLevelForCurrencySpent(#entries, treeType);
 
     local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
     if not button then
@@ -701,7 +748,7 @@ end
 
 function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
     local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
     local entries = self.recordingInfo.entries[indexKey];
     local removed;
     for i = #entries, 1, -1 do
@@ -727,10 +774,10 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
         end
     end
     if removed then
+        local treeType = (nodeInfo.tvSubTreeID and self.Enum.TreeType.SubTree)
+            or (nodeInfo.isClassNode and self.Enum.TreeType.Class or self.Enum.TreeType.Spec);
         for i = removed, #entries do
             local entry = entries[i];
-            local baseLevel = self.recordingInfo.startingOffset[indexKey];
-            local level = baseLevel + (i * 2);
             local button = self:GetTalentFrame():GetTalentButtonByNodeID(entry.nodeID);
             if not button then
                 if DevTool and DevTool.AddData then
@@ -741,7 +788,10 @@ function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
                     }, 'could not find button for NodeID when updating after removing');
                 end
             else
-                button.LevelingOrder:UpdateOrder(level + 2, level);
+                local baseCurrencyOffset = self.recordingInfo.currencyOffset[indexKey] or 0;
+                local level = self:GetRequiredLevelForCurrencySpent(baseCurrencyOffset + i, treeType);
+                local oldLevel = self:GetRequiredLevelForCurrencySpent(baseCurrencyOffset + i + 1, treeType);
+                button.LevelingOrder:UpdateOrder(oldLevel, level);
             end
         end
     end
@@ -749,7 +799,7 @@ end
 
 function TalentViewer:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
     local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and 1 or 2);
+    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
     local entries = self.recordingInfo.entries[indexKey];
     for _, entry in ipairs(entries) do
         if (entry.nodeID == nodeID) then
@@ -854,7 +904,7 @@ end
 function TalentViewer:HandleBlizzardActionButtonHighlights(spellID)
     local ON_BAR_HIGHLIGHT_MARKS = spellID and tInvert(C_ActionBar.FindSpellActionButtons(spellID) or {}) or {};
     for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-        if ( actionButton.SpellHighlightTexture and actionButton.SpellHighlightAnim ) then
+        if actionButton.SpellHighlightTexture and actionButton.SpellHighlightAnim then
             SharedActionButton_RefreshSpellHighlight(actionButton, ON_BAR_HIGHLIGHT_MARKS[actionButton.action]);
         end
     end

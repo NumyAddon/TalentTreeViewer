@@ -1,4 +1,5 @@
-local _, ns = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 ns.mixins = ns.mixins or {};
 
@@ -6,9 +7,9 @@ ns.mixins = ns.mixins or {};
 local TalentViewer = ns.TalentViewer;
 if not TalentViewer then return; end
 
---- @class TalentViewer_LevelingSliderMixinTWW
+--- @class TalentViewer_LevelingSlider: Slider, MinimalSliderWithSteppersTemplate
 TalentViewer_LevelingSliderMixin = CreateFromMixins(MinimalSliderWithSteppersMixin);
---- @class TalentViewer_LevelingSliderMixinTWW
+--- @class TalentViewer_LevelingSlider
 local LevelingSliderMixin = TalentViewer_LevelingSliderMixin;
 LevelingSliderMixin:GenerateCallbackEvents(
     {

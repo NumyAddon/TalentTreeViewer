@@ -1,4 +1,5 @@
-local _, ns = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 ns.mixins = ns.mixins or {};
 

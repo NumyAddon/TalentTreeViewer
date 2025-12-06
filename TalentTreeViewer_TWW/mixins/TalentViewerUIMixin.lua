@@ -1,4 +1,6 @@
-local name, ns = ...;
+local name = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 ns.mixins = ns.mixins or {};
 
@@ -78,14 +80,16 @@ end
 
 --- @type ClassTalentsFrameMixin
 local parentMixin = ClassTalentsFrameMixin;
---- @class TalentViewerUIMixinTWW: ClassTalentsFrameMixin
+--- @class TalentViewer_ClassTalentsFrameTemplate
 TalentViewer_ClassTalentsFrameMixin = deepCopy(parentMixin);
 
---- @class TalentViewerUIMixinTWW
+--- @class TalentViewer_ClassTalentsFrameTemplate
 local TalentViewerUIMixin = TalentViewer_ClassTalentsFrameMixin;
 --- @type TalentViewer_LevelingOrderFrameTWW[]
 TalentViewerUIMixin.levelingOrderButtons = {};
 TalentViewerUIMixin.currentOrder = 0;
+--- @type table<number, TVNodeInfo> # [nodeID] = nodeInfo
+TalentViewerUIMixin.purchasesWithRequiredLevel = {};
 
 local function removeFromMixin(method) TalentViewerUIMixin[method] = function() end; end
 removeFromMixin('UpdateConfigButtonsState');
@@ -158,8 +162,8 @@ function TalentViewerUIMixin:ShowSelections(...)
 end
 
 function TalentViewerUIMixin:UpdateTreeInfo(skipButtonUpdates)
-    self.talentTreeInfo = {}; --self:GetConfigID() and C_Traits.GetTreeInfo(self:GetConfigID(), self:GetTalentTreeID()) or {};
-    self:UpdateTreeCurrencyInfo(skipButtonUpdates);
+    self.talentTreeInfo = {};
+    self:UpdateTreeCurrencyInfo();
 
     if not skipButtonUpdates then
         self:RefreshGates();
@@ -191,8 +195,8 @@ function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
                 local isChoiceNode = self:IsChoiceNode(nodeInfo)
                 local selectedEntryId = isChoiceNode and TalentViewer:GetSelectedEntryId(incomingNodeId) or nil
                 local activeRank = isGranted
-                        and nodeInfo.maxRanks
-                        or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(incomingNodeId))
+                    and nodeInfo.maxRanks
+                    or ((isChoiceNode and selectedEntryId and 1) or TalentViewer:GetActiveRank(incomingNodeId))
                 local isEdgeActive = activeRank == nodeInfo.maxRanks
 
                 if not isEdgeActive then
@@ -209,7 +213,8 @@ function TalentViewerUIMixin:MeetsEdgeRequirements(nodeID)
     return GetOrCreateTableEntryByCallback(self.edgeRequirementsCache, nodeID, EdgeRequirementCallback)
 end
 
---- @return TVNodeInfo
+--- @return TVNodeInfo nodeInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
     local function GetNodeInfoCallback(nodeID)
         --- @class TVNodeInfo: libNodeInfo
@@ -276,23 +281,32 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
                     break
                 end
             end
-            nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank } or nil
+            nodeInfo.activeEntry = entryIndex and { entryID = nodeInfo.entryIDs[entryIndex], rank = nodeInfo.activeRank, } or nil
         else
-            nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank }
+            nodeInfo.activeEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank, }
         end
         if not isChoiceNode and nodeInfo.activeRank ~= nodeInfo.maxRanks then
-            nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1 }
+            nodeInfo.nextEntry = { entryID = nodeInfo.entryIDs[1], rank = nodeInfo.activeRank + 1, }
         end
         nodeInfo.tvSubTreeID = nodeInfo.subTreeID;
         nodeInfo.subTreeID = nil;
 
         nodeInfo.isVisible = LibTalentTree:IsNodeVisibleForSpec(TalentViewer.selectedSpecId, nodeID)
 
+        if nodeInfo.requiredPlayerLevel and nodeInfo.ranksPurchased > 0 then
+            self.purchasesWithRequiredLevel[nodeID] = nodeInfo;
+        else
+            self.purchasesWithRequiredLevel[nodeID] = nil;
+        end
+
         return nodeInfo
     end
+
     return GetOrCreateTableEntryByCallback(self.nodeInfoCache, nodeID, GetNodeInfoCallback);
 end
 
+--- @return subTreeInfo subTreeInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetAndCacheSubTreeInfo(subTreeID)
     local function GetSubTreeInfoCallback()
         self.dirtySubTreeIDSet[subTreeID] = nil;
@@ -302,6 +316,8 @@ function TalentViewerUIMixin:GetAndCacheSubTreeInfo(subTreeID)
     return GetOrCreateTableEntryByCallback(self.subTreeInfoCache, subTreeID, GetSubTreeInfoCallback);
 end
 
+--- @return TraitCondInfo conditionInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
     local function GetCondInfoCallback(condID)
         local condInfo = {
@@ -321,11 +337,15 @@ function TalentViewerUIMixin:GetAndCacheCondInfo(condID)
                 break;
             end
         end
+
         return condInfo
     end
+
     return GetOrCreateTableEntryByCallback(self.condInfoCache, condID, GetCondInfoCallback);
 end
 
+--- @return entryInfo entryInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
     local function GetEntryInfoCallback(entryID)
         local entryInfo = LibTalentTree:GetEntryInfo(entryID);
@@ -337,9 +357,12 @@ function TalentViewerUIMixin:GetAndCacheEntryInfo(entryID)
 
         return entryInfo;
     end
+
     return GetOrCreateTableEntryByCallback(self.entryInfoCache, entryID, GetEntryInfoCallback);
 end
 
+--- @return { [1]: { ID: number, amount: number } } costInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetNodeCost(nodeID)
     local function GetNodeCostCallback(nodeID)
         local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
@@ -373,7 +396,7 @@ function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
     self:RunWithRestrictionsDisabled(function()
         self:ResetTree(true);
         for _, entry in ipairs(loadoutEntryInfo) do
-            if(entry.isChoiceNode) then
+            if entry.isChoiceNode then
                 self:SetSelection(entry.nodeID, entry.selectionEntryID);
             else
                 self:SetRank(entry.nodeID, entry.ranksPurchased);
@@ -381,6 +404,7 @@ function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
         end
     end);
     RunNextFrame(function() self:OnSubTreeSelectionChange(); end);
+
     return true;
 end
 
@@ -477,9 +501,10 @@ function TalentViewerUIMixin:SetRank(nodeID, rank)
 end
 
 function TalentViewerUIMixin:AfterRankChange(nodeID)
+    self.purchasesWithRequiredLevel[nodeID] = nil;
+    self:MarkNodeInfoCacheDirty(nodeID);
     local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
     self:MarkEdgeRequirementCacheDirty(nodeID);
-    self:MarkNodeInfoCacheDirty(nodeID);
     self:UpdateTreeCurrencyInfo();
     self:UpdateEdgeSiblings(nodeID);
 
@@ -566,6 +591,8 @@ function TalentViewerUIMixin:RefreshGates()
     end
 end
 
+--- @return table<number, treeCurrencyInfo> treeCurrencyInfos # [index or SubTreeID] = treeCurrencyInfo
+--- @return boolean isNewValue
 function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
     local function GetTreeCurrencyInfoCallback(specID)
         local treeCurrencyInfo = {};
@@ -610,12 +637,11 @@ end
 function TalentViewerUIMixin:UpdateTreeCurrencyInfo()
     self:ProcessGateMandatedRefunds();
 
+    --- @type table<number, treeCurrencyInfo> # [index or SubTreeID] = treeCurrencyInfo
     self.treeCurrencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
 
     self.treeCurrencyInfoMap = {};
-    for i, treeCurrency in ipairs(self.treeCurrencyInfo) do
-        -- hardcode currency cap to lvl 70 values
-        treeCurrency.maxQuantity = i == 1 and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
+    for _, treeCurrency in ipairs(self.treeCurrencyInfo) do
         self.treeCurrencyInfoMap[treeCurrency.traitCurrencyID] = TalentViewer:ApplyCurrencySpending(treeCurrency);
     end
 
@@ -719,6 +745,18 @@ function TalentViewerUIMixin:RefreshCurrencyDisplay()
     local specCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[2] or nil;
     self.SpecCurrencyDisplay:SetPointTypeText(string.upper(tvCache.specNames[self:GetSpecID()]));
     self.SpecCurrencyDisplay:SetAmount((specCurrencyInfo and specCurrencyInfo.quantity or 0));
+
+    local activeHeroSpecID = self:GetActiveSubTreeID()
+    local heroSpecCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[activeHeroSpecID] or nil;
+    if not activeHeroSpecID then
+        self.HeroSpecCurrencyDisplay:Hide();
+
+        return;
+    end
+    local subTreeInfo = self:GetAndCacheSubTreeInfo(activeHeroSpecID);
+    self.HeroSpecCurrencyDisplay:Show();
+    self.HeroSpecCurrencyDisplay:SetPointTypeText(string.upper(subTreeInfo.name));
+    self.HeroSpecCurrencyDisplay:SetAmount((heroSpecCurrencyInfo and heroSpecCurrencyInfo.quantity or 0));
 end
 
 function TalentViewerUIMixin:SelectSubTree(subTreeID)
@@ -741,6 +779,7 @@ function TalentViewerUIMixin:OnSubTreeSelectionChange()
             end
         end
     end
+    self:RefreshCurrencyDisplay();
 end
 
 function TalentViewerUIMixin:OnLoad()
@@ -759,26 +798,54 @@ function TalentViewerUIMixin:OnLoad()
     self.nodeCostCache = {};
     self.treeCurrencyInfoCache = {};
 
+    local outerSelf = self;
+
+    --- @param self TTV_ClassTalentCurrencyDisplayTemplate
+    --- @param amount number
     local setAmountOverride = function(self, amount)
-        local requiredLevel = self.isClassCurrency and 8 or 9;
-        local spent = (self.isClassCurrency and ns.MAX_LEVEL_CLASS_CURRENCY_CAP or ns.MAX_LEVEL_SPEC_CURRENCY_CAP) - amount;
-        requiredLevel = math.max(10, requiredLevel + (spent * 2));
+        local spent;
+        local minimumLevel = 10;
+        if self.treeType == TalentViewer.Enum.TreeType.Class then
+            spent = ns.MAX_LEVEL_CLASS_CURRENCY_CAP - amount;
+        elseif self.treeType == TalentViewer.Enum.TreeType.SubTree then
+            spent = ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP - amount;
+        elseif self.treeType == TalentViewer.Enum.TreeType.Spec then
+            spent = ns.MAX_LEVEL_SPEC_CURRENCY_CAP - amount;
+        end
+        for _, nodeInfo in pairs(outerSelf.purchasesWithRequiredLevel) do
+            local treeType = (nodeInfo.tvSubTreeID and TalentViewer.Enum.TreeType.SubTree)
+                or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
+            if nodeInfo.requiredPlayerLevel and treeType == self.treeType then
+                if nodeInfo.ranksPurchased > 1 then
+                    local baseCurrency = TalentViewer:GetCurrencyAtLevel(nodeInfo.requiredPlayerLevel, TalentViewer.Enum.TreeType.Spec);
+                    local selectedRankCurrency = baseCurrency + nodeInfo.ranksPurchased - 1;
+                    minimumLevel = math.max(minimumLevel, TalentViewer:GetRequiredLevelForCurrencySpent(selectedRankCurrency, TalentViewer.Enum.TreeType.Spec));
+                else
+                    minimumLevel = math.max(minimumLevel, nodeInfo.requiredPlayerLevel);
+                end
+            end
+        end
+        local requiredLevel = math.max(minimumLevel, TalentViewer:GetRequiredLevelForCurrencySpent(spent, self.treeType));
 
         local text = string.format(L['%d (level %d)'], amount, requiredLevel);
 
-        self.CurrencyAmount:SetText(text);
+        --- @todo cleanup after Midnight
+        local currencyAmount = self.CurrencyAmount or self.CurrentAmountContainer.CurrencyAmount
+        currencyAmount:SetText(text);
 
         local enabled = not self:IsInspecting() and (amount > 0);
         local textColor = enabled and GREEN_FONT_COLOR or GRAY_FONT_COLOR;
-        self.CurrencyAmount:SetTextColor(textColor:GetRGBA());
+        currencyAmount:SetTextColor(textColor:GetRGBA());
 
         self:MarkDirty();
     end
 
-    self.ClassCurrencyDisplay.SetAmount = setAmountOverride
-    self.ClassCurrencyDisplay.isClassCurrency = true
-    self.SpecCurrencyDisplay.SetAmount = setAmountOverride
-    self.SpecCurrencyDisplay.isClassCurrency = false
+    self.ClassCurrencyDisplay.SetAmount = setAmountOverride;
+    self.ClassCurrencyDisplay.treeType = TalentViewer.Enum.TreeType.Class;
+    self.SpecCurrencyDisplay.SetAmount = setAmountOverride;
+    self.SpecCurrencyDisplay.treeType = TalentViewer.Enum.TreeType.Spec;
+    self.HeroSpecCurrencyDisplay.SetAmount = setAmountOverride;
+    self.HeroSpecCurrencyDisplay.treeType = TalentViewer.Enum.TreeType.SubTree;
 end
 
 -----------------------

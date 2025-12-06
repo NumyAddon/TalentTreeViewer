@@ -1,30 +1,69 @@
 ---@meta _
+---@diagnostic disable: duplicate-doc-field
 
 --- inherits ClassTalentTalentsTabMixin
---- @class TalentViewerUIMixinTWW: FRAME
+--- @class TalentViewer_ClassTalentsFrameTemplate: ClassTalentsFrameMixin, Frame, TalentFrameBaseTemplate
 --- @field EnumerateAllTalentButtons fun(): fun(): TalentViewer_TalentButtonMixinTWW
---- @field GetTalentButtonByNodeID fun(self: TalentViewerUIMixinTWW, nodeID: number): nil|TalentViewer_TalentButtonMixinTWW
---- @field StartRecordingButton BUTTON
---- @field StopRecordingButton BUTTON
---- @field LevelingBuildLevelSlider SLIDER
---- @field LevelingBuildDropDownButton BUTTON
+--- @field GetTalentButtonByNodeID fun(self: TalentViewer_ClassTalentsFrameTemplate, nodeID: number): nil|TalentViewer_TalentButtonMixinTWW
+--- @field heroSpecSelectionDialog TalentViewer_HeroSpecSelectionDialog
+--- @field HeroTalentsContainer HeroTalentsContainerTemplate
+--- @field ClassCurrencyDisplay TTV_ClassTalentCurrencyDisplayTemplate
+--- @field HeroSpecCurrencyDisplay TTV_ClassTalentCurrencyDisplayTemplate
+--- @field SpecCurrencyDisplay TTV_ClassTalentCurrencyDisplayTemplate
+--- @field LoadSystem DropdownLoadSystemTemplate
+--- @field TV_DropdownButton WowStyle1DropdownTemplate
+--- @field linkButton TTV_NoTooltipButton
+--- @field SearchBox SpellSearchBoxTemplate
+--- @field SearchPreviewContainer SpellSearchPreviewContainerTemplate
+--- @field ApplyButton TTV_NoTooltipButton
+--- @field InspectCopyButton TTV_NoTooltipButton
+--- @field ImportButton TTV_NoTooltipButton
+--- @field ExportButton TTV_NoTooltipButton
+--- @field ResetButton TTV_ResetButton
+--- @field IgnoreRestrictions UICheckButtonTemplate
+--- @field LevelingBuildHeader TTV_LevelingBuildHeader
+--- @field StartRecordingButton IconButtonTemplate
+--- @field StopRecordingButton IconButtonTemplate
+--- @field ResetRecordingButton IconButtonTemplate
+--- @field LevelingBuildDropdownButton WowStyle1DropdownTemplate
+--- @field LevelingBuildLevelSlider TalentViewer_LevelingSlider
+--- @field UndoButton IconButtonTemplate
+--- @field PvPTalentSlotTray PvPTalentSlotTrayTemplate
+--- @field PvPTalentList PvPTalentListTemplate
 
---- @class TalentViewer_TalentButtonMixinTWW: BUTTON
---- @field talentFrame TalentViewerUIMixinTWW
+--- @class TalentViewer_DF: Frame, ButtonFrameTemplate
+--- @field PortraitOverlay Frame
+--- @field Talents TalentViewer_ClassTalentsFrameTemplate
+TalentViewer_DF = {}
+
+--- @class TTV_NoTooltipButton: Button, UIPanelButtonNoTooltipTemplate, UIButtonTemplate
+--- @class TTV_ResetButton: DropdownButton, IconButtonTemplate
+
+--- @class TTV_ClassTalentCurrencyDisplayTemplate: ClassTalentCurrencyDisplayTemplate
+--- @field treeType TalentViewer_Enum_TreeType
+
+--- @class TTV_LevelingBuildHeader: Frame
+--- @field Text FontString
+
+--- @class TalentViewer_TalentButtonMixinTWW: Button, TalentButtonBaseMixin
+--- @field talentFrame TalentViewer_ClassTalentsFrameTemplate
 --- @field LevelingOrder TalentViewer_LevelingOrderFrameTWW
 --- @field GetNodeID fun(): number
 --- @field GetNodeInfo fun(): TVNodeInfo
 
---- @class TalentViewer_LevelingOrderFrameTWW: FRAME
+--- @class TalentViewer_LevelingOrderFrameTWW: Frame
 --- @field Text FontString
 --- @field order number[]
 --- @field GetParent fun(): TalentViewer_TalentButtonMixinTWW
 
 --- @class TalentViewer_LevelingBuildInfoContainer
+--- @field active boolean
+--- @field buildID number
 --- @field entries table<number, TalentViewer_LevelingBuildEntry[]> # [tree] = entries, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs; entries are indexed by order, not level
---- @field startingOffset table<number, number> # [specOrClass] = startingOffset (specOrClass is 1 for class, 2 for spec); so that level = startingOffset + (index * 2)
+--- @field currencyOffset table<number, number> # [tree] = currencyOffset, the amount of currency already spent before the first recorded entry
 --- @field selectedSubTreeID number? # Selected Hero Spec ID, if any
 --- @field entriesCount number # Total number of entries in the leveling build, to simplify checking if it's empty
+--- @field buildReference TalentViewer_LevelingBuildInfoContainer? # Reference to the stored leveling build
 
 --- @class TalentViewer_LevelingBuildEntry
 --- @field nodeID number
@@ -41,6 +80,9 @@
 --- @field selectionEntryID number
 --- @field isChoiceNode boolean
 
+--- @class TVNodeInfo: libNodeInfo
+--- @field subTreeID nil # always nil in TVNodeInfo
+--- @field tvSubTreeID number? # libNodeInfo.subTreeID
 -------------------
 ----- FrameXML ----
 -------------------

@@ -21,7 +21,7 @@ The export string is built as follows:
 - The body still is a list of 7-bit integers, but the values now describe the level at which a given talent was learned
 
 ### Leveling Build Format
-The leveling build string is a base64-encoded string, made of a sequence of of variable bit length integers.
+The leveling build string is a base64-encoded string, made of a sequence of integers with various bit lengths.
 The base64-encoding is done using Blizzard's modified base64 encoding. One can use their `ExportUtil` helper to read/write the string.
 
 ### Header
@@ -60,7 +60,7 @@ This results in a body with the following values (`_` is added for readability)
 `0b000_0000 0b000_1101 0b000_0000 0b000_1011` (base10 `0 13 0 11`)
 
 ```lua
--- Given the above example, is parsed into tables as follows:
+-- Given the above example is parsed into tables as follows:
 local talentsLearnedInTalentBuild = {"A", "B", "C", "D"};
 local data = {0, 13, 0, 11};
 -- The function below returns the talent learned at a specific level.

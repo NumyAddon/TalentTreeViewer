@@ -1,8 +1,10 @@
-local _, ns = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 ns.mixins = ns.mixins or {};
 
 --- default UI uses this mixin to handle the dialog for selecting a hero spec, but we don't like that popup, and just show it in the main UI instead
+--- @class TalentViewer_HeroSpecSelectionDialog: Frame
 TalentViewer_HeroSpecSelectionDialogMixin = {};
 local dialogMixin = TalentViewer_HeroSpecSelectionDialogMixin;
 

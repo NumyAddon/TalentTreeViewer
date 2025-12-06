@@ -1,7 +1,5 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.blizzard.com/wow/ui/ https://raw.githubusercontent.com/Gethe/wow-ui-source/live/Interface/FrameXML/UI_shared.xsd"
->
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+https://raw.githubusercontent.com/Gethe/wow-ui-source/refs/heads/live/Interface/AddOns/Blizzard_SharedXML/UI.xsd">
     <!-- copied and adapted from blizzard's code -->
 
     <Frame name="TalentViewer_ClassTalentsFrameTemplate" mixin="TalentViewer_ClassTalentsFrameMixin" inherits="TalentFrameBaseTemplate" virtual="true">
@@ -186,6 +184,12 @@
             <Frame parentKey="ClassCurrencyDisplay" inherits="ClassTalentCurrencyDisplayTemplate">
                 <Anchors>
 					<Anchor point="CENTER" relativeKey="$parent" relativePoint="TOPLEFT" x="372" y="-48"/>
+                </Anchors>
+            </Frame>
+
+            <Frame parentKey="HeroSpecCurrencyDisplay" inherits="ClassTalentCurrencyDisplayTemplate">
+                <Anchors>
+					<Anchor point="LEFT" relativeKey="$parent" relativePoint="TOPRIGHT" x="-971" y="-48"/>
                 </Anchors>
             </Frame>
 

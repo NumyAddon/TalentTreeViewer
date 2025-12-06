@@ -1,4 +1,5 @@
-local _, ns = ...;
+--- @class TTV_TWW_NS
+local ns = select(2, ...);
 
 ns.mixins = ns.mixins or {};
 
@@ -25,14 +26,14 @@ function TalentButtonMixin:OnClick(button)
 end
 
 function TalentButtonMixin:PurchaseRank()
-    --- @type TalentViewerUIMixinTWW
+    --- @type TalentViewer_ClassTalentsFrameTemplate
     local talentFrame = self.talentFrame;
     self:PlaySelectSound();
     talentFrame:PurchaseRank(self:GetNodeID());
 end
 
 function TalentButtonMixin:RefundRank()
-    --- @type TalentViewerUIMixinTWW
+    --- @type TalentViewer_ClassTalentsFrameTemplate
     local talentFrame = self.talentFrame;
     self:PlayDeselectSound();
     talentFrame:RefundRank(self:GetNodeID());
