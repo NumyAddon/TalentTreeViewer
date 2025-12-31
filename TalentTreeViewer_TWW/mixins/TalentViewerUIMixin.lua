@@ -148,6 +148,7 @@ end
 --- Various checks are disabled when the restrictions are disabled, improving performance of bulk actions substantially
 function TalentViewerUIMixin:RunWithRestrictionsDisabled(func)
     local backup = TalentViewer.db.ignoreRestrictions;
+    RunNextFrame(function() TalentViewer.db.ignoreRestrictions = backup end);
     TalentViewer.db.ignoreRestrictions = true;
     securecallfunction(func);
     TalentViewer.db.ignoreRestrictions = backup;
@@ -245,10 +246,22 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
 
         local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID);
         local meetsGateRequirements = true;
-        if not TalentViewer.db.ignoreRestrictions then
+        local isRecordingLevelingBuild = TalentViewer:IsRecordingLevelingBuild();
+        if isRecordingLevelingBuild and nodeInfo.requiredPlayerLevel and not nodeInfo.type == Enum.TraitNodeType.SubTreeSelection then
+            local treeType = nodeInfo.subTreeID and TalentViewer.Enum.TreeType.SubTree or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
+            local currentSpending = self.treeTypeSpending[treeType] or 0;
+            local level = TalentViewer:GetRequiredLevelForCurrencySpent(currentSpending + 1, treeType);
+            if level < nodeInfo.requiredPlayerLevel then
+                meetsGateRequirements = false;
+            end
+        end
+        if meetsGateRequirements and not TalentViewer.db.ignoreRestrictions then
             for _, conditionId in ipairs(nodeInfo.conditionIDs) do
                 local condInfo = self:GetAndCacheCondInfo(conditionId);
-                if condInfo.isGate and not condInfo.isMet then meetsGateRequirements = false; end
+                if condInfo.isGate and not condInfo.isMet then
+                    meetsGateRequirements = false;
+                    break;
+                end
             end
         end
 
@@ -797,6 +810,7 @@ function TalentViewerUIMixin:OnLoad()
     self.edgeRequirementsCache = {};
     self.nodeCostCache = {};
     self.treeCurrencyInfoCache = {};
+    self.treeTypeSpending = {}
 
     local outerSelf = self;
 
@@ -826,6 +840,7 @@ function TalentViewerUIMixin:OnLoad()
             end
         end
         local requiredLevel = math.max(minimumLevel, TalentViewer:GetRequiredLevelForCurrencySpent(spent, self.treeType));
+        outerSelf.treeTypeSpending[self.treeType] = spent;
 
         local text = string.format(L['%d (level %d)'], amount, requiredLevel);
 
@@ -904,24 +919,29 @@ function TalentViewerUIMixin:GetLevelingBuildInfo(buildID)
     return TalentViewer:GetLevelingBuild(buildID);
 end
 
+--- @return nil|number nodeID
+--- @return nil|number entryID
+--- @return nil|boolean isFreePick
 function TalentViewerUIMixin:GetNextLevelingBuildPurchase(buildID)
     local info = self:GetLevelingBuildInfo(buildID);
     if not info then return; end
 
+    local currencyOrder = TalentViewer:GetCurrencyEarnedOrder();
+
     for level = 10, ns.MAX_LEVEL do
-        local targetTree;
-        if level < 71 then
-            targetTree = (level % 2) + 1;
-        else
+        local targetTree = currencyOrder[level];
+        if targetTree == TalentViewer.Enum.TreeType.SubTree then
             targetTree = self:GetActiveSubTreeID();
             if not targetTree and info.selectedSubTreeID then
-                return LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self:GetSpecID(), info.selectedSubTreeID);
+                local nodeID, entryID = LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self:GetSpecID(), info.selectedSubTreeID);
+
+                return nodeID, entryID, true;
             end
         end
         local entryInfo = info.entries[targetTree] and info.entries[targetTree][level];
         local nodeInfo = entryInfo and self:GetAndCacheNodeInfo(entryInfo.nodeID);
         if nodeInfo and nodeInfo.ranksPurchased < entryInfo.targetRank then
-            return entryInfo.nodeID, entryInfo.entryID;
+            return entryInfo.nodeID, entryInfo.entryID, false;
         end
     end
 end
@@ -951,16 +971,27 @@ function TalentViewerUIMixin:ApplyLevelingBuild(level, lockLevelingBuild)
     local info = buildID and self:GetLevelingBuildInfo(buildID);
     if not info then return; end
 
+    local function purchaseNext()
+        local nodeID, entryID, isFreePick = self:GetNextLevelingBuildPurchase(buildID);
+        if not nodeID then return false; end
+        if entryID then
+            self:SetSelection(nodeID, entryID);
+        else
+            self:PurchaseRank(nodeID);
+        end
+        if isFreePick then
+            purchaseNext()
+        end
+
+        return true;
+    end
+
     self:RunWithRestrictionsDisabled(function()
         self:ResetTree(lockLevelingBuild);
         if level >= 10 then
             for _ = 10, level do
-                local nodeID, entryID = self:GetNextLevelingBuildPurchase(buildID);
-                if not nodeID then break; end
-                if entryID then
-                    self:SetSelection(nodeID, entryID);
-                else
-                    self:PurchaseRank(nodeID);
+                if not purchaseNext() then
+                    break;
                 end
             end
         end

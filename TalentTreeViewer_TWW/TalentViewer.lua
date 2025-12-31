@@ -53,6 +53,8 @@ local cache = {
         [TalentViewer.Enum.TreeType.Spec] = {},
         [TalentViewer.Enum.TreeType.SubTree] = {},
     },
+    --- @type table<number, TalentViewer_Enum_TreeType> # [level] = treeType
+    currencyEarnedOrder = {},
 };
 TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
@@ -318,6 +320,27 @@ function TalentViewer:GetCurrencyAtLevel(level, treeType)
     end
 
     return self.cache.currencyAtLevel[treeType][level] or 0;
+end
+
+--- @return table<number, TalentViewer_Enum_TreeType> # [level] = treeType
+function TalentViewer:GetCurrencyEarnedOrder()
+    local order = self.cache.currencyEarnedOrder;
+    if not next(order) then
+        for i = 1, ns.MAX_LEVEL_CLASS_CURRENCY_CAP do
+            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.Class);
+            order[level] = self.Enum.TreeType.Class;
+        end
+        for i = 1, ns.MAX_LEVEL_SPEC_CURRENCY_CAP do
+            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.Spec);
+            order[level] = self.Enum.TreeType.Spec;
+        end
+        for i = 1, ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP do
+            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.SubTree);
+            order[level] = self.Enum.TreeType.SubTree;
+        end
+    end
+
+    return CopyTable(order);
 end
 
 ----------------------
