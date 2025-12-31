@@ -21,7 +21,9 @@ IcyVeinsImport.bitWidthNodeIndex = 6;
 --- @public
 function IcyVeinsImport:IsTalentUrl(text)
     -- example URL https://www.icy-veins.com/wow/the-war-within-talent-calculator#seg1-seg2-seg3-seg4-seg5
-    return not not text:match('^https?://www%.icy%-veins%.com/wow/the%-war%-within%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$');
+    -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5
+    return not not text:match('^https?://www%.icy%-veins%.com/wow/the%-war%-within%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$')
+        or not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$');
 end
 
 --- @private
