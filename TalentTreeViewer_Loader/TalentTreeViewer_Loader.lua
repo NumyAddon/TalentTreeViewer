@@ -1,6 +1,7 @@
 local name, _ = ...;
+local displayName = 'Talent Tree Viewer';
 
-if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(name, 'only works on Dragonflight and later') return; end
+if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(displayName, 'only works on Dragonflight and later') return; end
 
 --- @class TalentViewerLoader
 local TVLoader = {};
@@ -41,15 +42,15 @@ function TVLoader:OnInitialize()
     end
 
     local dataObject = LibStub('LibDataBroker-1.1'):NewDataObject(
-        name,
+        displayName,
         {
             type = 'launcher',
-            text = 'Talent Tree Viewer',
+            text = displayName,
             icon = 'interface/icons/inv_inscription_talenttome01.blp',
             OnClick = function()
                 if IsShiftKeyDown() then
                     self.db.ldbOptions.hide = true;
-                    LibDBIcon:Hide(name);
+                    LibDBIcon:Hide(displayName);
                     print(L['Minimap button hidden. Use |cffeda55f/tv reset|r to restore.']);
 
                     return;
@@ -57,26 +58,26 @@ function TVLoader:OnInitialize()
                 self:ToggleTalentView();
             end,
             OnTooltipShow = function(tooltip)
-                tooltip:AddLine('Talent Tree Viewer');
+                tooltip:AddLine(displayName);
                 tooltip:AddLine(L['|cffeda55fClick|r to view the talents for any spec.']);
                 tooltip:AddLine(L['|cffeda55fShift-Click|r to hide this button. (|cffeda55f/tv reset|r to restore)']);
             end,
         }
     );
-    LibDBIcon:Register(name, dataObject, self.db.ldbOptions);
-    LibDBIcon:AddButtonToCompartment(name);
+    LibDBIcon:Register(displayName, dataObject, self.db.ldbOptions);
+    LibDBIcon:AddButtonToCompartment(displayName);
 
     SLASH_TALENT_VIEWER1 = '/tv';
     SLASH_TALENT_VIEWER2 = '/talentviewer';
     SLASH_TALENT_VIEWER3 = '/talenttreeviewer';
     SlashCmdList['TALENT_VIEWER'] = function(message)
         if message == 'reset' then
-            wipe(TalentViewer.db.ldbOptions);
-            TalentViewer.db.ldbOptions.hide = false;
-            TalentViewer.db.lastSelected = nil;
+            wipe(self.db.ldbOptions);
+            self.db.ldbOptions.hide = false;
+            self.db.lastSelected = nil;
 
-            LibDBIcon:Hide(name);
-            LibDBIcon:Show(name);
+            LibDBIcon:Hide(displayName);
+            LibDBIcon:Show(displayName);
 
             return;
         end
