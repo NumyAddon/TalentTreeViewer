@@ -64,6 +64,7 @@ function TVLoader:OnInitialize()
         }
     );
     LibDBIcon:Register(name, dataObject, self.db.ldbOptions);
+    LibDBIcon:AddButtonToCompartment(name);
 
     SLASH_TALENT_VIEWER1 = '/tv';
     SLASH_TALENT_VIEWER2 = '/talentviewer';
