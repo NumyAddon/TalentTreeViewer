@@ -247,7 +247,7 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
         local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID);
         local meetsGateRequirements = true;
         local isRecordingLevelingBuild = TalentViewer:IsRecordingLevelingBuild();
-        if isRecordingLevelingBuild and nodeInfo.requiredPlayerLevel and not nodeInfo.type == Enum.TraitNodeType.SubTreeSelection then
+        if isRecordingLevelingBuild and nodeInfo.requiredPlayerLevel and nodeInfo.type ~= Enum.TraitNodeType.SubTreeSelection then
             local treeType = nodeInfo.subTreeID and TalentViewer.Enum.TreeType.SubTree or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
             local currentSpending = self.treeTypeSpending[treeType] or 0;
             local level = TalentViewer:GetRequiredLevelForCurrencySpent(currentSpending + 1, treeType);
