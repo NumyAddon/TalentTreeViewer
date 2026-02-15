@@ -20,10 +20,8 @@ IcyVeinsImport.bitWidthNodeIndex = 6;
 --- @return boolean
 --- @public
 function IcyVeinsImport:IsTalentUrl(text)
-    -- example URL https://www.icy-veins.com/wow/the-war-within-talent-calculator#seg1-seg2-seg3-seg4-seg5
     -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5
-    return not not text:match('^https?://www%.icy%-veins%.com/wow/the%-war%-within%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$')
-        or not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$');
+    return not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-?$');
 end
 
 --- @private
@@ -63,7 +61,9 @@ function IcyVeinsImport:ParseUrl(url)
     local dataSection = url:match('#(.*)');
     dataSection = dataSection:gsub(':', '/'); -- IcyVeins uses base64 with `:`, whereas wow uses `/`
 
-    local specIDString, classString, specString, heroString, pvpString = string.split('-', dataSection);
+    local sections = { string.split('-', dataSection) };
+    local specIDString, classString, specString = sections[1], sections[2], sections[3];
+    local heroString = sections[#sections - 1]; -- there seems to sometimes be an additional segment in the middle? not sure what that is
     local specIDStream = ExportUtil.MakeImportDataStream(specIDString);
     local specID = tonumber(specIDStream:ExtractValue(self.bitWidthSpecID));
     local classID = specID and C_SpecializationInfo.GetClassIDFromSpecID(specID);
