@@ -11,11 +11,13 @@ ns.mixins.LevelingOrderMixin = LevelingOrderMixin;
 --- @param order number[]
 function LevelingOrderMixin:SetOrder(order)
     self.order = CopyTable(order);
+    table.sort(self.order);
     self:UpdateText();
 end
 --- @param level number
 function LevelingOrderMixin:AppendToOrder(level)
     table.insert(self.order, level);
+    table.sort(self.order);
     self:UpdateText();
 end
 function LevelingOrderMixin:RemoveLastOrder()
