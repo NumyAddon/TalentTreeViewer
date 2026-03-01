@@ -28,8 +28,8 @@ local apexTalentLevels = { 81, 84, 87, 90 };
 --- @return boolean
 --- @public
 function IcyVeinsImport:IsTalentUrl(text)
-    -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5
-    return not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-?$');
+    -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5-seg6
+    return not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-?[^-]*$');
 end
 
 --- @private
