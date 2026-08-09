@@ -11,7 +11,7 @@ local TalentViewer = ns.TalentViewer
 --- @type LibTalentTree-1.0
 local LibTT = LibStub('LibTalentTree-1.0');
 
-local L = LibStub('AceLocale-3.0'):GetLocale(name)
+local L = ns.L;
 
 IcyVeinsImport.TREE_TYPE_CLASS = 'class';
 IcyVeinsImport.TREE_TYPE_SPEC = 'spec';

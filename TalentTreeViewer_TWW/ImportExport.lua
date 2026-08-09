@@ -3,11 +3,11 @@ local name = ...;
 local ns = select(2, ...);
 
 --- @class TalentViewerImportExportTWW
-local ImportExport = ns.ImportExport
+local ImportExport = ns.ImportExport;
 
 --- @type TalentViewerTWW
-local TalentViewer = ns.TalentViewer
-local L = LibStub("AceLocale-3.0"):GetLocale(name);
+local TalentViewer = ns.TalentViewer;
+local L = ns.L;
 
 local LOADOUT_SERIALIZATION_VERSION = 2;
 local LEVELING_BUILD_SERIALIZATION_VERSION = 2;

@@ -60,7 +60,7 @@ TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
 local LibTalentTree = LibStub('LibTalentTree-1.0');
 
-local L = LibStub('AceLocale-3.0'):GetLocale(name);
+local L = ns.L;
 
 local function wipe(table)
     if table and type(table) == 'table' then

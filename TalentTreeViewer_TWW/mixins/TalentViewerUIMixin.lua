@@ -14,7 +14,7 @@ local tvCache = TalentViewer.cache;
 ---@type LibTalentTree-1.0
 local LibTalentTree = LibStub('LibTalentTree-1.0');
 
-local L = LibStub('AceLocale-3.0'):GetLocale(name);
+local L = ns.L;
 
 local SELECTION_NODE_POS_X = 6700;
 local SELECTION_NODE_POS_Y = 4200;

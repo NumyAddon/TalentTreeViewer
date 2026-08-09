@@ -1,4 +1,4 @@
-local name, _ = ...;
+local name, ns = ...;
 local displayName = 'Talent Tree Viewer';
 
 if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(displayName, 'only works on Dragonflight and later') return; end
@@ -8,7 +8,7 @@ local TVLoader = {};
 TalentViewerLoader = TVLoader;
 
 local LibDBIcon = LibStub('LibDBIcon-1.0');
-local L = LibStub('AceLocale-3.0'):GetLocale(name);
+local L = ns.L;
 local lodAddonName = 'TalentTreeViewer_TWW';
 
 local frame = CreateFrame('Frame');
