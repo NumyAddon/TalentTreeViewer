@@ -1,11 +1,12 @@
 local name, ns = ...;
 local displayName = 'Talent Tree Viewer';
 
-local toc = select(4, GetBuildInfo());
-local is4E = toc >= 16000 and toc < 20000;
-local isRetail = toc > 100000;
+local gameType = C_AddOns.GetAddOnMetadata(name, "X-GameType");
+local gameFamily = C_AddOns.GetAddOnMetadata(name, "X-GameFamily");
+local is4E = gameType == "Camelot";
+local isRetail = gameType == "Standard";
 
-if not is4E and not isRetail then
+if gameFamily ~= "Mainline" then
     print(displayName, 'only works in Retail and WoW Forever');
 
     return;

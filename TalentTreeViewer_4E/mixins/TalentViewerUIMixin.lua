@@ -236,13 +236,19 @@ function TalentViewerUIMixin:GetAndCacheNodeInfo(nodeID)
 
         local meetsEdgeRequirements = TalentViewer.db.ignoreRestrictions or self:MeetsEdgeRequirements(nodeID);
         local meetsGateRequirements = true;
-        if meetsGateRequirements and not TalentViewer.db.ignoreRestrictions then
-            for _, conditionId in ipairs(nodeInfo.conditionIDs) do
-                local condInfo = self:GetAndCacheCondInfo(conditionId);
-                if condInfo.isGate and not condInfo.isMet then
-                    meetsGateRequirements = false;
+        if meetsGateRequirements and not TalentViewer.db.ignoreRestrictions and nodeInfo.spentAmountRequired then
+            -- check spending amount
+            local requiredAmount = nodeInfo.spentAmountRequired.amount;
+            local specGroupID;
+            for _, groupID in pairs(nodeInfo.groupIDs) do
+                if tvCache.groupDisplayInfoByClass[self:GetClassID()][groupID] then
+                    specGroupID = groupID;
                     break;
                 end
+            end
+            local spent = self:GetTalentViewer().currencyGroupSpending[specGroupID or 0] or 0;
+            if spent < requiredAmount then
+                meetsGateRequirements = false;
             end
         end
 
@@ -361,25 +367,21 @@ function TalentViewerUIMixin:GetNodeCost(nodeID)
     local function GetNodeCostCallback(nodeID)
         local currencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
         local nodeInfo = LibTalentTree:GetLibNodeInfo(nodeID);
-        local currencyID;
-        if nodeInfo then
-            if nodeInfo.subTreeID then
-                currencyID = currencyInfo[nodeInfo.subTreeID].traitCurrencyID;
-            elseif nodeInfo.isSubTreeSelection then
-                return {};
-            elseif nodeInfo.isClassNode then
-                currencyID = currencyInfo[1].traitCurrencyID;
-            else
-                currencyID = currencyInfo[2].traitCurrencyID;
+        local currencyID = currencyInfo[1].traitCurrencyID;
+        local specGroupID;
+        local groupDisplayInfo = tvCache.groupDisplayInfoByClass[self:GetClassID()];
+        for _, groupID in pairs(nodeInfo.groupIDs) do
+            if groupDisplayInfo[groupID]then
+                specGroupID = groupID;
+                break;
             end
-        else -- default to spec currency
-            currencyID = currencyInfo[2].traitCurrencyID;
         end
 
         return {
             {
                 ID = currencyID,
                 amount = 1,
+                groupID = specGroupID,
             },
         };
     end
@@ -388,7 +390,7 @@ end
 
 function TalentViewerUIMixin:ImportLoadout(loadoutEntryInfo)
     self:RunWithRestrictionsDisabled(function()
-        self:ResetTree(true);
+        self:ResetTree();
         for _, entry in ipairs(loadoutEntryInfo) do
             if entry.isChoiceNode then
                 self:SetSelection(entry.nodeID, entry.selectionEntryID);
@@ -519,22 +521,12 @@ function TalentViewerUIMixin:ResetTree()
     TalentViewer:ResetTree();
 end
 
-function TalentViewerUIMixin:ResetClassTalents()
-    local classTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[1] and self.treeCurrencyInfo[1].traitCurrencyID;
-    self:ResetByCurrencyID(classTraitCurrencyID);
-end
-
-function TalentViewerUIMixin:ResetSpecTalents()
-    local specTraitCurrencyID = self.treeCurrencyInfo and self.treeCurrencyInfo[2] and self.treeCurrencyInfo[2].traitCurrencyID;
-    self:ResetByCurrencyID(specTraitCurrencyID);
-end
-
-function TalentViewerUIMixin:ResetByCurrencyID(currencyID)
+function TalentViewerUIMixin:ResetByGroupID(groupID)
     self:RunWithRestrictionsDisabled(function()
         for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
-            local cost = self:GetNodeCost(nodeID);
-            for _, currencyCost in ipairs(cost) do
-                if currencyCost.ID == currencyID then
+            local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
+            for _, nodeGroupID in ipairs(nodeInfo.groupIDs) do
+                if nodeGroupID == groupID then
                     self:SetRank(nodeID, 0);
                     self:SetSelection(nodeID, nil);
                 end
@@ -557,29 +549,11 @@ function TalentViewerUIMixin:GetAndCacheTreeCurrencyInfo(specID)
         for i, currencyInfo in ipairs(currencies) do
             if currencyInfo.isClassCurrency then
                 treeCurrencyInfo[i] = {
-                    maxQuantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
-                    quantity = ns.MAX_LEVEL_CLASS_CURRENCY_CAP,
+                    maxQuantity = ns.TOTAL_CURRENCY_CAP,
+                    quantity = ns.TOTAL_CURRENCY_CAP,
                     spent = 0,
                     traitCurrencyID = currencyInfo.traitCurrencyID,
                 };
-            elseif currencyInfo.isSpecCurrency then
-                treeCurrencyInfo[i] = {
-                    maxQuantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
-                    quantity = ns.MAX_LEVEL_SPEC_CURRENCY_CAP,
-                    spent = 0,
-                    traitCurrencyID = currencyInfo.traitCurrencyID
-                };
-            elseif currencyInfo.subTreeIDs then
-                treeCurrencyInfo[i] = {
-                    maxQuantity = currencyInfo.maxQuantity,
-                    quantity = currencyInfo.quantity,
-                    spent = currencyInfo.spent,
-                    traitCurrencyID = currencyInfo.traitCurrencyID,
-                    subTreeIDs = currencyInfo.subTreeIDs,
-                };
-                for _, subTreeID in ipairs(currencyInfo.subTreeIDs) do
-                    treeCurrencyInfo[subTreeID] = treeCurrencyInfo[i];
-                end
             else
                 error('unexpected currency, currencyID: ' .. currencyInfo.traitCurrencyID .. ' treeID: ' .. treeID);
             end
@@ -594,7 +568,7 @@ local TREE_HEADER_OFFSET_X = 140;
 local TREE_HEADER_OFFSET_Y = -100;
 local TREE_HEADER_SPACING_X = 400;
 function TalentViewerUIMixin:RefreshTreeHeaders()
-    self:ProcessGateMandatedRefunds();
+    self:ProcessGroupSpendingMandatedRefunds();
 
     --- @type table<number, treeCurrencyInfo> # [index or SubTreeID] = treeCurrencyInfo
     self.treeCurrencyInfo = self:GetAndCacheTreeCurrencyInfo(self:GetSpecID());
@@ -613,7 +587,10 @@ function TalentViewerUIMixin:RefreshTreeHeaders()
         end
     end
 
-    local groupInfos = {}
+    local groupInfos = {};
+    for groupID, spent in pairs(self:GetTalentViewer().currencyGroupSpending) do
+        groupInfos[groupID] = { currencyInfos = { { spent = spent } } };
+    end
 
     for talentButton in self:EnumerateAllTalentButtons() do
         self:MarkNodeInfoCacheDirty(talentButton:GetNodeID());
@@ -637,32 +614,38 @@ function TalentViewerUIMixin:RefreshTreeHeaders()
     end
 
     for i, displayInfo in ipairs(displayInfos) do
-        local groupInfo = GroupCurrencyInfoForGroupID(groupInfos, displayInfo.groupID);
         local header = self.treeHeaderPool:Acquire("ClassTalentTreeHeaderTemplate");
-        header:Setup(displayInfo, groupInfo);
+        header:Setup(displayInfo, groupInfos[displayInfo.groupID]);
         header:SetPoint("CENTER", self.BackgroundBorder, "TOPLEFT", TREE_HEADER_OFFSET_X + ((i-1) * TREE_HEADER_SPACING_X), TREE_HEADER_OFFSET_Y);
         header:Show();
         table.insert(self.treeHeaders, header);
     end
 end
 
-function TalentViewerUIMixin:ProcessGateMandatedRefunds()
+function TalentViewerUIMixin:ProcessGroupSpendingMandatedRefunds()
     if TalentViewer.db.ignoreRestrictions then return; end
     self:RunWithRestrictionsDisabled(function()
-        self:UpdateNodeGateMapping();
-        local eligibleSpendingPerGate = self:GetEligibleSpendingPerGate();
-        local gates = LibTalentTree:GetGates(self:GetSpecID());
-
-        for _, gateInfo in ipairs(gates) do
-            local eligibleSpending = eligibleSpendingPerGate[gateInfo.conditionID] or 0;
-            if eligibleSpending < gateInfo.spentAmountRequired then
-                for _, nodeID in ipairs(self.nodesPerGate[gateInfo.conditionID]) do
-                    local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-                    if nodeInfo.ranksPurchased > 0 then
-                        if self:IsChoiceNode(nodeInfo) then
-                            self:SetSelection(nodeID, nil);
-                        else
-                            self:SetRank(nodeID, 0);
+        local classID = self:GetClassID();
+        local spendingPerGroup = { 0, 0, 0 };
+        for row = 1, ns.MAX_ROWS do
+            for groupIndex = 1, 3 do
+                for col = 1, 4 do
+                    local column = col + ((groupIndex - 1) * 4);
+                    local nodeID = LibTalentTree:GetNodeIDsForGridPosition(classID, column, row);
+                    local nodeInfo = nodeID and self:GetAndCacheNodeInfo(nodeID);
+                    if nodeInfo and nodeInfo.spentAmountRequired and nodeInfo.spentAmountRequired.amount > spendingPerGroup[groupIndex] then
+                        if nodeInfo.ranksPurchased > 0 then
+                            if self:IsChoiceNode(nodeInfo) then
+                                self:SetSelection(nodeID, nil);
+                            else
+                                self:SetRank(nodeID, 0);
+                            end
+                        end
+                    elseif nodeInfo then
+                        local costInfo = self:GetNodeCost(nodeID);
+                        local amount = costInfo[1].amount;
+                        if nodeInfo.ranksPurchased > 0 then
+                            spendingPerGroup[groupIndex] = spendingPerGroup[groupIndex] + (amount * nodeInfo.ranksPurchased);
                         end
                     end
                 end
@@ -671,59 +654,9 @@ function TalentViewerUIMixin:ProcessGateMandatedRefunds()
     end);
 end
 
-function TalentViewerUIMixin:UpdateNodeGateMapping()
-    if self.eligibleNodesPerGate and self.nodesPerGate then return; end
-    self.eligibleNodesPerGate = {};
-    self.nodesPerGate = {};
-    local gates = LibTalentTree:GetGates(self:GetSpecID());
-
-    for _, gateInfo in ipairs(gates) do
-        self.eligibleNodesPerGate[gateInfo.conditionID] = self.eligibleNodesPerGate[gateInfo.conditionID] or {};
-        self.nodesPerGate[gateInfo.conditionID] = self.nodesPerGate[gateInfo.conditionID] or {};
-
-        for _, nodeID in ipairs(C_Traits.GetTreeNodes(TalentViewer.treeId)) do
-            local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-            local conditionIDs = nodeInfo.conditionIDs;
-            local costInfo = self:GetNodeCost(nodeID);
-
-            if costInfo and costInfo[1] and costInfo[1].ID and costInfo[1].ID == gateInfo.traitCurrencyID then
-                local conditionMatches = false;
-                for _, conditionID in ipairs(conditionIDs) do
-                    if conditionID == gateInfo.conditionID then
-                        conditionMatches = true;
-                        break;
-                    end
-                end
-                if conditionMatches then
-                    table.insert(self.nodesPerGate[gateInfo.conditionID], nodeID);
-                else
-                    table.insert(self.eligibleNodesPerGate[gateInfo.conditionID], nodeID);
-                end
-            end
-        end
-    end
-end
-
---- @return table<number, number> # [conditionID] = eligibleSpending
-function TalentViewerUIMixin:GetEligibleSpendingPerGate()
-    local spendingPerGate = {}
-    for condID, nodeIDs in pairs(self.eligibleNodesPerGate) do
-        spendingPerGate[condID] = 0;
-        for _, nodeID in ipairs(nodeIDs) do
-            local nodeInfo = self:GetAndCacheNodeInfo(nodeID);
-            local costInfo = self:GetNodeCost(nodeID);
-            local amount = costInfo[1].amount;
-            if nodeInfo.ranksPurchased > 0 then
-                spendingPerGate[condID] = spendingPerGate[condID] + (amount * nodeInfo.ranksPurchased);
-            end
-        end
-    end
-
-    return spendingPerGate
-end
-
 function TalentViewerUIMixin:RefreshCurrencyDisplay()
-    -- todo: fix
+    local classCurrencyInfo = self.treeCurrencyInfo and self.treeCurrencyInfo[1] or nil;
+    self.ClassCurrencyDisplay:SetAmount(classCurrencyInfo and classCurrencyInfo.quantity or 0);
 end
 
 function TalentViewerUIMixin:SelectSubTree(subTreeID)
@@ -771,7 +704,20 @@ function TalentViewerUIMixin:OnLoad()
     self.treeTypeSpending = {}
 
     self.treeHeaderPool = CreateFramePoolCollection();
-	self.treeHeaderPool:CreatePool("FRAME", self, "ClassTalentTreeHeaderTemplate");
+    self.treeHeaderPool:CreatePool("FRAME", self, "ClassTalentTreeHeaderTemplate");
+
+    self.ResetButton:SetupMenu(function(dropdown, rootDescription)
+        rootDescription:SetTag("MENU_CLASS_TALENT_FRAME_RESET");
+
+        rootDescription:CreateTitle(TALENT_FRAME_RESET_BUTTON_DROPDOWN_TITLE);
+        if not self:GetTalentTreeID() then return; end
+        local displayInfos = C_Traits.GetGroupDisplayInfoByTreeID(self:GetTalentTreeID());
+        for i, displayInfo in ipairs(displayInfos) do
+            rootDescription:CreateButton(displayInfo.displayName, function() self:ResetByGroupID(displayInfo.groupID) end);
+        end
+        rootDescription:CreateButton(TALENT_FRAME_RESET_BUTTON_DROPDOWN_ALL, function() self:ResetTree() end);
+    end);
+    self.ResetButton.SetupMenu = nop;
 
     parentMixin.OnLoad(self);
 end

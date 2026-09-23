@@ -6,6 +6,8 @@
 ## Title: TalentTree Viewer (TWW UI)
 ## Notes: View any spec's talent trees from any character. This module is only for The War Within!
 ## Author: Numy
+## X-GameType: [Game]
+## X-GameFamily: [Family]
 ## IconTexture: Interface\Addons\TalentTreeViewer_TWW\media\icon
 ## Version: @project-version@
 ## X-Curse-Project-ID: 678279

@@ -2,26 +2,14 @@ local name = ...;
 --- @class TTV_4E_NS
 local ns = select(2, ...);
 
-local isMidnight = select(4, GetBuildInfo()) >= 120000;
-
 local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink;
 local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat;
-local GetAllClassIDs = C_SpecializationInfo.GetAllClassIDs or function()
-    local classIDs = {}
-    for classID = 1, GetNumClasses() do
-        if GetClassInfo(classID) then
-            table.insert(classIDs, classID);
-        end
-    end
+local GetAllClassIDs = C_SpecializationInfo.GetAllClassIDs;
 
-    return classIDs;
-end
-
-ns.MAX_LEVEL_CLASS_CURRENCY_CAP = isMidnight and 34 or 31;
-ns.MAX_LEVEL_SPEC_CURRENCY_CAP = isMidnight and 34 or 30;
-ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = isMidnight and 13 or 10;
-ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP + ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
+ns.TOTAL_CURRENCY_CAP = 51;
 ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP;
+ns.MAX_ROWS = 7;
+ns.MAX_COLS = 4 * 3;
 
 --- @class TalentViewer4E
 local TalentViewer = {
@@ -29,6 +17,7 @@ local TalentViewer = {
     --- @type table<number, number> # [nodeID] = entryID
     selectedEntries = {},
     currencySpending = {},
+    currencyGroupSpending = {},
     _ns = ns,
 };
 _G.TalentViewer = TalentViewer;
@@ -57,14 +46,7 @@ local cache = {
     specIndexToIdMap = {},
     specIdToClassIdMap = {},
     specIconId = {},
-    --- @type table<TalentViewer_Enum_TreeType, table<number, number>> # [treeType][level] = currencyAmount
-    currencyAtLevel = {
-        [TalentViewer.Enum.TreeType.Class] = {},
-        [TalentViewer.Enum.TreeType.Spec] = {},
-        [TalentViewer.Enum.TreeType.SubTree] = {},
-    },
-    --- @type table<number, TalentViewer_Enum_TreeType> # [level] = treeType
-    currencyEarnedOrder = {},
+    groupDisplayInfoByClass = {},
 };
 TalentViewer.cache = cache;
 ---@type LibTalentTree-1.0
@@ -98,6 +80,11 @@ do
                 cache.specIconId[specID] = specIcon;
                 cache.specIdToClassIdMap[specID] = classID;
             end
+        end
+        local treeID = LibTalentTree:GetClassTreeID(classID);
+        cache.groupDisplayInfoByClass[classID] = C_Traits.GetGroupDisplayInfoByTreeID(treeID);
+        for _, info in ipairs(cache.groupDisplayInfoByClass[classID]) do
+            cache.groupDisplayInfoByClass[classID][info.groupID] = info;
         end
     end
 end
@@ -136,6 +123,7 @@ function TalentViewer:ResetTree()
     wipe(self.purchasedRanks);
     wipe(self.selectedEntries);
     wipe(self.currencySpending);
+    wipe(self.currencyGroupSpending);
     wipe(talentFrame.edgeRequirementsCache);
     talentFrame.nodesPerGate = nil;
     talentFrame.eligibleNodesPerGate = nil;
@@ -193,6 +181,7 @@ function TalentViewer:ReduceCurrency(nodeID)
     if costInfo then
         for _, cost in ipairs(costInfo) do
             self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) + cost.amount;
+            self.currencyGroupSpending[cost.groupID] = (self.currencyGroupSpending[cost.groupID] or 0) + cost.amount;
         end
     end
 end
@@ -202,97 +191,9 @@ function TalentViewer:RestoreCurrency(nodeID)
     if costInfo then
         for _, cost in ipairs(costInfo) do
             self.currencySpending[cost.ID] = (self.currencySpending[cost.ID] or 0) - cost.amount;
+            self.currencyGroupSpending[cost.groupID] = (self.currencyGroupSpending[cost.groupID] or 0) - cost.amount;
         end
     end
-end
-
---- @param spent number
---- @param treeType TalentViewer_Enum_TreeType
---- @return number requiredLevel
-function TalentViewer:GetRequiredLevelForCurrencySpent(spent, treeType)
-    local requiredLevel;
-    if self.Enum.TreeType.Class == treeType then
-        -- starts at 8 (so that first talent point results in level 10)
-        -- 10-70 = spendingUnderOrEqual31 * 2
-        -- 81-90 = spendingOver31 * 3
-        -- ignore apex talents for now
-        if spent > 31 then
-            requiredLevel = 79 + ((spent - 31) * 3);
-        else
-            requiredLevel = 8 + (spent * 2);
-        end
-    elseif self.Enum.TreeType.SubTree == treeType then
-        -- starts at 70 (so that first talent point results in level 71)
-        -- 71-80 = spendingUnderOrEqual10 * 1
-        -- 81-90 = spendingOver10 * 3
-        if spent > 10 then
-            requiredLevel = 80 + ((spent - 10) * 3);
-        else
-            requiredLevel = 70 + spent;
-        end
-    elseif self.Enum.TreeType.Spec == treeType then
-        -- if apex talent selected: minimum level is 80 regardless of spending
-        -- starts at 9 (so that first talent point results in level 11)
-        -- 11-70 = spendingUnderOrEqual30 * 2
-        -- 81-90 = spendingOver30 * 3
-        if spent > 30 then
-            requiredLevel = 78 + ((spent - 30) * 3);
-        else
-            requiredLevel = 9 + (spent * 2);
-        end
-    else
-        error('Invalid currency type: ' .. tostring(treeType));
-    end
-
-    return math.max(10, requiredLevel);
-end
-
---- @param level number
---- @param treeType TalentViewer_Enum_TreeType
---- @return number currencyAmount
-function TalentViewer:GetCurrencyAtLevel(level, treeType)
-    if not self.cache.currencyAtLevel[treeType][level] then
-        local maxCurrency;
-        if self.Enum.TreeType.Class == treeType then
-            maxCurrency = ns.MAX_LEVEL_CLASS_CURRENCY_CAP;
-        elseif self.Enum.TreeType.Spec == treeType then
-            maxCurrency = ns.MAX_LEVEL_SPEC_CURRENCY_CAP;
-        elseif self.Enum.TreeType.SubTree == treeType then
-            maxCurrency = ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
-        end
-        for currencyAmount = 0, maxCurrency do
-            local requiredLevel = self:GetRequiredLevelForCurrencySpent(currencyAmount, treeType);
-            self.cache.currencyAtLevel[treeType][requiredLevel] = currencyAmount;
-        end
-        for lvl = 10, ns.MAX_LEVEL do
-            if not self.cache.currencyAtLevel[treeType][lvl] then
-                self.cache.currencyAtLevel[treeType][lvl] = self.cache.currencyAtLevel[treeType][lvl - 1] or 0;
-            end
-        end
-    end
-
-    return self.cache.currencyAtLevel[treeType][level] or 0;
-end
-
---- @return table<number, TalentViewer_Enum_TreeType> # [level] = treeType
-function TalentViewer:GetCurrencyEarnedOrder()
-    local order = self.cache.currencyEarnedOrder;
-    if not next(order) then
-        for i = 1, ns.MAX_LEVEL_CLASS_CURRENCY_CAP do
-            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.Class);
-            order[level] = self.Enum.TreeType.Class;
-        end
-        for i = 1, ns.MAX_LEVEL_SPEC_CURRENCY_CAP do
-            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.Spec);
-            order[level] = self.Enum.TreeType.Spec;
-        end
-        for i = 1, ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP do
-            local level = self:GetRequiredLevelForCurrencySpent(i, self.Enum.TreeType.SubTree);
-            order[level] = self.Enum.TreeType.SubTree;
-        end
-    end
-
-    return CopyTable(order);
 end
 
 ----------------------

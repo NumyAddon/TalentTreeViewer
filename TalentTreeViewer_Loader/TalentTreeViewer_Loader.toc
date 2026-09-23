@@ -5,6 +5,8 @@
 ## Title: TalentTree Viewer (Loader)
 ## Notes: View any spec's talent trees from any character
 ## Author: Numy
+## X-GameType: [Game]
+## X-GameFamily: [Family]
 ## IconTexture: Interface\Addons\TalentTreeViewer_Loader\media\icon
 ## Version: @project-version@
 ## SavedVariables: TalentTreeViewerDB
