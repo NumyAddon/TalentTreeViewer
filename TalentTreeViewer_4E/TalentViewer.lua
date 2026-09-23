@@ -51,12 +51,12 @@ local cache = {
     classNames = {},
     classFiles = {},
     classSpecs = {},
+    classOrder = {},
     nodes = {},
     specNames = {},
     specIndexToIdMap = {},
     specIdToClassIdMap = {},
     specIconId = {},
-    initialSpecs = {},
     --- @type table<TalentViewer_Enum_TreeType, table<number, number>> # [treeType][level] = currencyAmount
     currencyAtLevel = {
         [TalentViewer.Enum.TreeType.Class] = {},
@@ -82,50 +82,21 @@ end
 --- Build class / spec cache
 ----------------------
 do
-    local initialSpecs = {
-        [1] = 1446,
-        [2] = 1451,
-        [3] = 1448,
-        [4] = 1453,
-        [5] = 1452,
-        [6] = 1455,
-        [7] = 1444,
-        [8] = 1449,
-        [9] = 1454,
-        [10] = 1450,
-        [11] = 1447,
-        [12] = 1456,
-        [13] = 1465,
-    };
-    local allClassIDs = GetAllClassIDs();
-    cache.initialSpecIDtoClassID = tInvert(initialSpecs);
-    local initialClassID = allClassIDs[table.count(allClassIDs)] + 1;
-    cache.initialFakeClassID = initialClassID;
-    cache.classNames[initialClassID] = L['Initial Specializations'];
-    cache.classFiles[initialClassID] = ''; -- results in no texture shown
-    cache.specIndexToIdMap[initialClassID] = {};
-    cache.classSpecs[initialClassID] = {};
-
-    for _, classID in ipairs(allClassIDs) do
+    for i, classID in ipairs(GetAllClassIDs()) do
+        cache.classOrder[i] = classID;
         cache.classNames[classID], cache.classFiles[classID] = GetClassInfo(classID);
         cache.specIndexToIdMap[classID] = {};
         cache.classSpecs[classID] = {};
         local numSpecs = C_SpecializationInfo.GetNumSpecializationsForClassID(classID);
-        for specIndex = 1, (numSpecs + 1) do
-            local specID = GetSpecializationInfoForClassID(classID, specIndex) or initialSpecs[classID];
+        for specIndex = 1, numSpecs do
+            local specID = GetSpecializationInfoForClassID(classID, specIndex);
             local specName, _, specIcon = select(2, GetSpecializationInfoForSpecID(specID));
-            local isInitial = specIndex > numSpecs;
-            if isInitial then
-                specName = L['Initial %s']:format(cache.classNames[classID]);
-                specIndex = classID;
-                classID = initialClassID;
-            end
             if specName ~= '' then
                 cache.specNames[specID] = specName;
                 cache.classSpecs[classID][specID] = specName;
                 cache.specIndexToIdMap[classID][specIndex] = specID;
-                cache.specIconId[specID] = not isInitial and specIcon or ('interface/icons/classicon_' .. cache.classFiles[specIndex]);
-                cache.specIdToClassIdMap[specID] = not isInitial and classID or specIndex;
+                cache.specIconId[specID] = specIcon;
+                cache.specIdToClassIdMap[specID] = classID;
             end
         end
     end
@@ -427,7 +398,7 @@ function TalentViewer:SelectSpec(classId, specId, skipDropdownUpdate)
         cache.classSpecs[classId][specId] or ''
     ));
     if not skipDropdownUpdate then
-        self.dropDownButton:PickSpecID(specId);
+        self.dropDownButton:PickClassID(classId);
     end
 
     self:ResetTree();
@@ -467,44 +438,36 @@ function TalentViewer:InitDropdown()
     self.dropDownButton = TalentViewer_DF.Talents.TV_DropdownButton;
 
     self.dropDownButton:SetupMenu(function(owner, rootDescription)
-        rootDescription:CreateTitle(L['Select another Specialization']);
+        rootDescription:CreateTitle(L['Select another Class']);
         self:BuildMenu(rootDescription);
     end);
     self.dropDownButton:SetSelectionText(function(selections)
-        return selections[2].text;
+        return selections[1].text;
     end);
 
-    local specList = {};
-    local specListReverse = {};
-    local index = 1;
-    for classID, _ in ipairs(cache.classSpecs) do
-        for _, specID in ipairs(cache.specIndexToIdMap[classID]) do
-            specList[index] = specID;
-            specListReverse[specID] = index;
-            index = index + 1;
-        end
-    end
+    local classListReverse = tInvert(cache.classOrder);
+    local numClasses = table.count(cache.classOrder);
 
     self.dropDownButton:EnableMouseWheel(true);
     function self.dropDownButton:Increment()
-        local currentSpecIndex = specListReverse[TalentViewer.selectedSpecId];
-        local nextSpecIndex = currentSpecIndex + 1;
-        if nextSpecIndex > #specList then
-            nextSpecIndex = 1;
+        local currentClassIndex = classListReverse[TalentViewer.selectedClassId];
+        local nextClassIndex = currentClassIndex + 1;
+        if nextClassIndex > numClasses then
+            nextClassIndex = 1;
         end
-        self:PickSpecID(specList[nextSpecIndex]);
+        self:PickClassID(cache.classOrder[nextClassIndex]);
     end
     function self.dropDownButton:Decrement()
-        local currentSpecIndex = specListReverse[TalentViewer.selectedSpecId];
-        local previousSpecIndex = currentSpecIndex - 1;
-        if previousSpecIndex < 1 then
-            previousSpecIndex = #specList;
+        local currentClassIndex = classListReverse[TalentViewer.selectedClassId];
+        local previousClassIndex = currentClassIndex - 1;
+        if previousClassIndex < 1 then
+            previousClassIndex = numClasses;
         end
-        self:PickSpecID(specList[previousSpecIndex]);
+        self:PickClassID(cache.classOrder[previousClassIndex]);
     end
-    function self.dropDownButton:PickSpecID(specID)
+    function self.dropDownButton:PickClassID(classID)
         MenuUtil.TraverseMenu(self:GetMenuDescription(), function(description)
-            if description.data == specID then self:Pick(description, MenuInputContext.None) end
+            if description.data == classID then self:Pick(description, MenuInputContext.None) end
         end);
     end
 end
@@ -512,37 +475,23 @@ end
 --- @param rootDescription RootMenuDescriptionProxy
 function TalentViewer:BuildMenu(rootDescription)
     local function isClassSelected(classID)
-        return classID == (cache.initialSpecIDtoClassID[self.selectedSpecId] and cache.initialFakeClassID or self.selectedClassId);
+        return classID == self.selectedClassId;
     end
-    local function isSpecSelected(specID)
-        return specID == self.selectedSpecId;
-    end
-    local function selectSpec(specID)
-        self:SelectSpec(cache.specIdToClassIdMap[specID], specID, true);
+    local function selectClass(classID)
+        self:SelectSpec(classID, cache.specIndexToIdMap[classID][1], true);
     end
 
-    for classID, _ in ipairs(cache.classSpecs) do
+    for _, classID in ipairs(cache.classOrder) do
         local nameFormat = '|T%s:16|t %s';
-        local elementDescription = rootDescription:CreateRadio(
+        rootDescription:CreateRadio(
             nameFormat:format(
                 'interface/icons/classicon_' .. cache.classFiles[classID],
                 cache.classNames[classID]
             ),
             isClassSelected,
-            nil,
+            selectClass,
             classID
         );
-        for _, specID in ipairs(cache.specIndexToIdMap[classID]) do
-            elementDescription:CreateRadio(
-                nameFormat:format(
-                    cache.specIconId[specID],
-                    cache.specNames[specID]
-                ),
-                isSpecSelected,
-                selectSpec,
-                specID
-            );
-        end
     end
 end
 
