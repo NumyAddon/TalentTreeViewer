@@ -1,5 +1,5 @@
 local name = ...;
---- @class TTV_TWW_NS
+--- @class TTV_4E_NS
 local ns = select(2, ...);
 
 local isMidnight = select(4, GetBuildInfo()) >= 120000;
@@ -23,7 +23,7 @@ ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP = isMidnight and 13 or 10;
 ns.TOTAL_CURRENCY_CAP = ns.MAX_LEVEL_CLASS_CURRENCY_CAP + ns.MAX_LEVEL_SPEC_CURRENCY_CAP + ns.MAX_LEVEL_SUBTREE_CURRENCY_CAP;
 ns.MAX_LEVEL = 9 + ns.TOTAL_CURRENCY_CAP;
 
---- @class TalentViewerTWW
+--- @class TalentViewer4E
 local TalentViewer = {
     purchasedRanks = {},
     --- @type table<number, number> # [nodeID] = entryID
@@ -46,7 +46,7 @@ TalentViewer.Enum = {
     },
 };
 
---- @class TalentViewer_CacheTWW
+--- @class TalentViewer_Cache4E
 local cache = {
     classNames = {},
     classFiles = {},
@@ -147,7 +147,7 @@ frame:RegisterEvent('ADDON_LOADED');
 --- Talent Tree Utilities ---
 -----------------------------
 
---- @return TalentViewer_ClassTalentsFrameTemplate
+--- @return TalentViewer_ClassTalentsFrameTemplate4E
 function TalentViewer:GetTalentFrame()
     return TalentViewer_DF.Talents;
 end
@@ -160,8 +160,7 @@ function TalentViewer:ApplyCurrencySpending(treeCurrency)
     return treeCurrency;
 end
 
---- @param lockLevelingBuild ?boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
-function TalentViewer:ResetTree(lockLevelingBuild)
+function TalentViewer:ResetTree()
     local talentFrame = self:GetTalentFrame();
     wipe(self.purchasedRanks);
     wipe(self.selectedEntries);
@@ -173,14 +172,6 @@ function TalentViewer:ResetTree(lockLevelingBuild)
     talentFrame:SetTalentTreeID(self.treeId, true);
     talentFrame:UpdateClassVisuals();
     talentFrame:UpdateSpecBackground();
-    talentFrame:UpdateLevelingBuildHighlights();
-    local isRecordingLevelingBuild = self:IsRecordingLevelingBuild();
-    if not lockLevelingBuild then
-        self:ClearLevelingBuild();
-        if isRecordingLevelingBuild then
-            self:StartRecordingLevelingBuild();
-        end
-    end
 end
 
 function TalentViewer:GetActiveRank(nodeID)
@@ -207,40 +198,20 @@ end
 function TalentViewer:PurchaseRank(nodeID)
     self:ReduceCurrency(nodeID);
     self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) + 1;
-
-    if self:IsRecordingLevelingBuild() then
-        self:RecordLevelingEntry(nodeID, self.purchasedRanks[nodeID]);
-    end
 end
 
 function TalentViewer:RefundRank(nodeID)
     self:RestoreCurrency(nodeID);
     self.purchasedRanks[nodeID] = (self.purchasedRanks[nodeID] or 0) - 1;
-
-    if self:IsRecordingLevelingBuild() then
-        self:RemoveLastRecordedLevelingEntry(nodeID);
-    end
 end
 
 function TalentViewer:SetSelection(nodeID, entryID)
     local hasPreviousSelection = self.selectedEntries[nodeID] ~= nil;
 
-    if (entryID and hasPreviousSelection and entryID ~= self.selectedEntries[nodeID]) then
-        if self:IsRecordingLevelingBuild() then
-            self:UpdateRecordedLevelingChoiceEntry(nodeID, entryID);
-        end
-    elseif (entryID and not hasPreviousSelection) then
+    if (entryID and not hasPreviousSelection) then
         self:ReduceCurrency(nodeID);
-
-        if self:IsRecordingLevelingBuild() then
-            self:RecordLevelingEntry(nodeID, 1, entryID);
-        end
     elseif (not entryID and hasPreviousSelection) then
         self:RestoreCurrency(nodeID);
-
-        if self:IsRecordingLevelingBuild() then
-            self:RemoveLastRecordedLevelingEntry(nodeID);
-        end
     end
 
     self.selectedEntries[nodeID] = entryID;
@@ -373,9 +344,9 @@ function TalentViewer:OnInitialize()
 end
 
 function TalentViewer:ImportLoadout(importString)
-    --- @type TalentViewerImportExportTWW
+    --- @type TalentViewerImportExport4E
     local ImportExport = ns.ImportExport;
-    --- @type TalentViewerIcyVeinsImportTWW
+    --- @type TalentViewerIcyVeinsImport4E
     local IcyVeinsImport = ns.IcyVeinsImport;
 
     if TalentViewer_DF:IsShown() then
@@ -383,15 +354,11 @@ function TalentViewer:ImportLoadout(importString)
     else
         TalentViewer:ToggleTalentView();
     end
-    if IcyVeinsImport:IsTalentUrl(importString) then
-        IcyVeinsImport:ImportUrl(importString);
-    else
-        ImportExport:ImportLoadout(importString);
-    end
+    ImportExport:ImportLoadout(importString);
 end
 
 function TalentViewer:ExportLoadout()
-    --- @type TalentViewerImportExportTWW
+    --- @type TalentViewerImportExport4E
     local ImportExport = ns.ImportExport;
 
     return ImportExport:GetLoadoutExportString();
@@ -438,7 +405,6 @@ function TalentViewer:InitFrame()
     self:InitDropdown();
     self:InitCheckbox();
     self:InitSpecSelection();
-    self:InitLevelingBuildUIs();
 end
 
 --- Reset the talent tree, and select the specified spec
@@ -578,349 +544,6 @@ function TalentViewer:BuildMenu(rootDescription)
             );
         end
     end
-end
-
------------------------
---- Leveling builds ---
------------------------
---- @type TalentViewer_LevelingBuildInfoContainer
-local defaultRecordingInfo = {
-    active = true,
-    buildID = 0, -- matches #levelingBuilds, effectively an auto increment
-    currencyOffset = { -- the amount of currency already spent before the first recorded entry
-        [TalentViewer.Enum.TreeType.Class] = 0,
-        [TalentViewer.Enum.TreeType.Spec] = 0,
-        -- hero spec trees are not pre-allocated
-    },
-    entries = {
-        [TalentViewer.Enum.TreeType.Class] = {},
-        [TalentViewer.Enum.TreeType.Spec] = {},
-        -- hero spec trees are not pre-allocated
-    },
-    entriesCount = 0,
-};
---- @type table<number, table<number, TalentViewer_LevelingBuildInfoContainer>> # [specID][buildID][specOrClass] = entries (specOrClass is 1 for class, 2 for spec)
-TalentViewer.levelingBuilds = {};
---- @type TalentViewer_LevelingBuildInfoContainer
-TalentViewer.recordingInfo = CreateFromMixins(defaultRecordingInfo);
-
-function TalentViewer:GetCurrentLevelingBuildID()
-    return self.recordingInfo.buildID;
-end
-
---- @return nil|table<number, table<number, TalentViewer_LevelingBuildEntry>> # [tree] = {[level] = entry}, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs
-function TalentViewer:GetCurrentLevelingBuild()
-    return self:GetCurrentLevelingBuildID() and self:GetLevelingBuild(self:GetCurrentLevelingBuildID());
-end
-
---- @param buildID number
---- @return TalentViewer_LevelingBuild?
-function TalentViewer:GetLevelingBuild(buildID)
-    local build = self.levelingBuilds[self.selectedSpecId] and self.levelingBuilds[self.selectedSpecId][buildID] or nil;
-    if not build then return nil; end
-
-    local buildEntries = {};
-    for tree, entries in pairs(build.entries) do
-        buildEntries[tree] = {};
-        local currencyOffset = build.currencyOffset[tree] or 0;
-        local treeType = (tree > 2) and TalentViewer.Enum.TreeType.SubTree or tree;
-        for i, entry in ipairs(entries) do
-            local level = self:GetRequiredLevelForCurrencySpent(currencyOffset + i, treeType);
-            buildEntries[tree][level] = entry;
-        end
-    end
-
-    return { entries = buildEntries, selectedSubTreeID = build.selectedSubTreeID };
-end
-
---- @param lockLevelingBuild boolean # by default, a new leveling build is created and activated when this function is called, passing true will prevent that
-function TalentViewer:ApplyLevelingBuild(buildID, level, lockLevelingBuild)
-    local buildEntries = self:GetLevelingBuild(buildID);
-    if (not buildEntries) then
-        return;
-    end
-    local buildInfo = self.levelingBuilds[self.selectedSpecId][buildID];
-
-    self.recordingInfo.buildID = buildID;
-    self.recordingInfo.entries = buildInfo.entries;
-    self.recordingInfo.entriesCount = buildInfo.entriesCount;
-    self.recordingInfo.currencyOffset = buildInfo.currencyOffset;
-    self.recordingInfo.active = false;
-    self.recordingInfo.buildReference = buildInfo;
-    self:GetTalentFrame():SetLevelingBuildID(buildID);
-    self:GetTalentFrame():ApplyLevelingBuild(level, lockLevelingBuild);
-    self.recordingInfo.active = true;
-
-    self:GetTalentFrame().LevelingBuildLevelSlider:SetValue(level);
-end
-
---- @param levelingBuild TalentViewer_LevelingBuild
-function TalentViewer:ImportLevelingBuild(levelingBuild)
-    local buildEntries = levelingBuild.entries;
-    local selectedSubTreeID = levelingBuild.selectedSubTreeID;
-    self:ClearLevelingBuild();
-    for tree, entries in pairs(buildEntries) do
-        local treeType = (tree > 2) and TalentViewer.Enum.TreeType.SubTree or tree;
-        local currencyOffset;
-        for level = 10, ns.MAX_LEVEL do
-            local entry = entries[level];
-            if entry then
-                if not currencyOffset then
-                    currencyOffset = math.max(0, self:GetCurrencyAtLevel(level, treeType) - 1);
-                end
-                self:RecordLevelingEntry(entry.nodeID, entry.targetRank, entry.entryID);
-            end
-        end
-        self.recordingInfo.currencyOffset[tree] = currencyOffset or 0;
-    end
-    if selectedSubTreeID then
-        local nodeID, subTreeEntryID = LibTalentTree:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(self.selectedSpecId, selectedSubTreeID);
-        if nodeID and subTreeEntryID then
-            self:RecordLevelingEntry(nodeID, 1, subTreeEntryID);
-        end
-    end
-end
-
-function TalentViewer:StartRecordingLevelingBuild()
-    self.recordingInfo.active = true;
-    self:GetTalentFrame().StartRecordingButton:Hide();
-    self:GetTalentFrame().StopRecordingButton:Show();
-    if next(self:GetCurrentLevelingBuild() or {}) then
-        self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), ns.MAX_LEVEL, true);
-    else
-        self:UpdateCurrencyOffsetsForRecordingBuild();
-    end
-end
-
-function TalentViewer:UpdateCurrencyOffsetsForRecordingBuild()
-    for tree, _ in pairs(self.recordingInfo.currencyOffset) do
-        local treeCurrencyInfo = self:GetTalentFrame().treeCurrencyInfo[tree];
-        self.recordingInfo.currencyOffset[tree] = treeCurrencyInfo and treeCurrencyInfo.spent or 0;
-    end
-end
-
-function TalentViewer:StopRecordingLevelingBuild()
-    self.recordingInfo.active = false;
-    self:GetTalentFrame().StartRecordingButton:Show();
-    self:GetTalentFrame().StopRecordingButton:Hide();
-end
-
-function TalentViewer:ClearLevelingBuild()
-    for _, button in ipairs(self:GetTalentFrame().levelingOrderButtons) do
-        button:SetOrder({});
-    end
-    self.levelingBuilds[self.selectedSpecId] = self.levelingBuilds[self.selectedSpecId] or {};
-    if
-        self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID]
-        and self.levelingBuilds[self.selectedSpecId][self.recordingInfo.buildID].entries == self.recordingInfo.entries
-        and 0 == self.recordingInfo.entriesCount
-    then -- the build is already empty, no point resetting it
-        return;
-    end
-    self.recordingInfo = CopyTable(defaultRecordingInfo);
-    self.recordingInfo.buildID = #self.levelingBuilds[self.selectedSpecId] + 1;
-    --- @type TalentViewer_LevelingBuildInfoContainer
-    local info = {
-        active = true,
-        buildID = self.recordingInfo.buildID,
-        entries = self.recordingInfo.entries,
-        currencyOffset = self.recordingInfo.currencyOffset,
-        entriesCount = 0,
-    };
-    table.insert(self.levelingBuilds[self.selectedSpecId], info);
-
-    self:StartRecordingLevelingBuild();
-end
-
-function TalentViewer:IsRecordingLevelingBuild()
-    return self.recordingInfo.active;
-end
-
---- @param nodeID number
---- @param targetRank number
---- @param entryID ?number
-function TalentViewer:RecordLevelingEntry(nodeID, targetRank, entryID)
-    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
-    if nodeInfo.isSubTreeSelection then
-        local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
-        button.LevelingOrder:SetOrder({ 71 });
-        local entryInfo = entryID and self:GetTalentFrame():GetAndCacheEntryInfo(entryID);
-        self.recordingInfo.selectedSubTreeID = entryInfo and entryInfo.subTreeID;
-        self.recordingInfo.buildReference.selectedSubTreeID = self.recordingInfo.selectedSubTreeID;
-
-        return;
-    end;
-    self.recordingInfo.entriesCount = self.recordingInfo.entriesCount + 1;
-    self.recordingInfo.buildReference.entriesCount = self.recordingInfo.entriesCount;
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
-    self.recordingInfo.entries[indexKey] = self.recordingInfo.entries[indexKey] or {};
-    local entries = self.recordingInfo.entries[indexKey];
-    table.insert(entries, {
-        nodeID = nodeID,
-        targetRank = targetRank,
-        entryID = entryID,
-    });
-    local treeType = (nodeInfo.tvSubTreeID and self.Enum.TreeType.SubTree)
-        or (nodeInfo.isClassNode and self.Enum.TreeType.Class or self.Enum.TreeType.Spec);
-    local level = self:GetRequiredLevelForCurrencySpent(#entries, treeType);
-
-    local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
-    if not button then
-        if DevTool and DevTool.AddData then
-            DevTool:AddData({
-                entry = entries[#entries],
-                nodeID = nodeID,
-                level = level,
-                nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
-            }, 'could not find button for NodeID when recording');
-        end
-        return
-    end
-    button.LevelingOrder:AppendToOrder(level);
-end
-
-function TalentViewer:RemoveLastRecordedLevelingEntry(nodeID)
-    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
-    local entries = self.recordingInfo.entries[indexKey];
-    local removed;
-    for i = #entries, 1, -1 do
-        local entry = entries[i];
-        if (entry and entry.nodeID == nodeID) then
-            removed = i;
-            table.remove(entries, i);
-            self.recordingInfo.entriesCount = self.recordingInfo.entriesCount - 1;
-            self.recordingInfo.buildReference.entriesCount = self.recordingInfo.entriesCount;
-            local button = self:GetTalentFrame():GetTalentButtonByNodeID(nodeID);
-            if not button then
-                if DevTool and DevTool.AddData then
-                    DevTool:AddData({
-                        entry = entry,
-                        nodeID = nodeID,
-                        nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
-                    }, 'could not find button for NodeID when removing');
-                end
-            else
-                button.LevelingOrder:RemoveLastOrder();
-            end
-            break;
-        end
-    end
-    if removed then
-        local treeType = (nodeInfo.tvSubTreeID and self.Enum.TreeType.SubTree)
-            or (nodeInfo.isClassNode and self.Enum.TreeType.Class or self.Enum.TreeType.Spec);
-        for i = removed, #entries do
-            local entry = entries[i];
-            local button = self:GetTalentFrame():GetTalentButtonByNodeID(entry.nodeID);
-            if not button then
-                if DevTool and DevTool.AddData then
-                    DevTool:AddData({
-                        entry = entry,
-                        nodeID = nodeID,
-                        nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID),
-                    }, 'could not find button for NodeID when updating after removing');
-                end
-            else
-                local baseCurrencyOffset = self.recordingInfo.currencyOffset[indexKey] or 0;
-                local level = self:GetRequiredLevelForCurrencySpent(baseCurrencyOffset + i, treeType);
-                local oldLevel = self:GetRequiredLevelForCurrencySpent(baseCurrencyOffset + i + 1, treeType);
-                button.LevelingOrder:UpdateOrder(oldLevel, level);
-            end
-        end
-    end
-end
-
-function TalentViewer:UpdateRecordedLevelingChoiceEntry(nodeID, entryID)
-    local nodeInfo = self:GetTalentFrame():GetAndCacheNodeInfo(nodeID);
-    local indexKey = nodeInfo.tvSubTreeID or (nodeInfo.isClassNode and TalentViewer.Enum.TreeType.Class or TalentViewer.Enum.TreeType.Spec);
-    local entries = self.recordingInfo.entries[indexKey];
-    for _, entry in ipairs(entries) do
-        if (entry.nodeID == nodeID) then
-            entry.entryID = entryID;
-            return;
-        end
-    end
-end
-
-function TalentViewer:InitLevelingBuildUIs()
-    local slider = self:GetTalentFrame().LevelingBuildLevelSlider;
-    local minValue = 9;
-    local maxValue = ns.MAX_LEVEL;
-    local steps = maxValue - minValue;
-    local formatters = {
-        [MinimalSliderWithSteppersMixin.Label.Left] = function() return L['Level'] end,
-        [MinimalSliderWithSteppersMixin.Label.Right] = function(value) return value end,
-    };
-    local currentValue = 9;
-    slider:Init(currentValue, minValue, maxValue, steps, formatters);
-
-    local callingFromSlider = false;
-    local function onValueChange()
-        local value = slider:GetValue();
-        if callingFromSlider or value == currentValue then return; end
-        currentValue = value;
-        callingFromSlider = true;
-        self:ApplyLevelingBuild(self:GetCurrentLevelingBuildID(), value, true);
-        callingFromSlider = false;
-        self:StopRecordingLevelingBuild();
-    end
-
-    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnDragStop, onValueChange);
-    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnStepperClicked, onValueChange);
-    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnEnter, function()
-        GameTooltip:SetOwner(slider, 'ANCHOR_RIGHT', 0, 0);
-        GameTooltip:SetText(L['Leveling build']);
-        GameTooltip:AddLine(L['Select the level to apply the leveling build to']);
-        GameTooltip:AddLine(L['This will lag out your game!']);
-        GameTooltip:Show();
-    end);
-    slider:RegisterCallback(TalentViewer_LevelingSliderMixin.Event.OnLeave, function()
-        GameTooltip:Hide();
-    end);
-
-
-    local dropdownButton = self:GetTalentFrame().LevelingBuildDropdownButton;
-    dropdownButton:HookScript('OnEnter', function()
-        GameTooltip:SetOwner(dropdownButton, 'ANCHOR_RIGHT', 0, 0);
-        GameTooltip:SetText(L['Leveling build']);
-        GameTooltip:AddLine(L['Select a leveling build to apply']);
-        GameTooltip:AddLine(L['This will reset your current talent choices!']);
-        GameTooltip:Show();
-    end);
-    dropdownButton:HookScript('OnLeave', function()
-        GameTooltip:Hide();
-    end);
-    dropdownButton:OverrideText(L['Select Recorded Build']);
-
-    local function isBuildSelected(buildID)
-        return self:GetCurrentLevelingBuildID() == buildID;
-    end
-    local function selectBuild(buildID)
-        self:ApplyLevelingBuild(buildID, currentValue, true);
-        self:StopRecordingLevelingBuild();
-    end
-    dropdownButton:SetupMenu(function(owner, rootDescription)
-        rootDescription:CreateTitle(L['Leveling builds can be saved and loaded with TalentLoadoutManager'], WHITE_FONT_COLOR);
-        rootDescription:CreateTitle(L['You can also export/import leveling builds, or link them in chat'], WHITE_FONT_COLOR);
-
-        if (not C_AddOns.IsAddOnLoaded('TalentLoadoutManager')) then
-            rootDescription:CreateButton(L['Click to |cFF3333FFdownload|r TalentLoadoutManager'], function()
-                StaticPopup_Show('TalentViewerExportDialog', nil, nil, 'https://www.curseforge.com/wow/addons/talent-loadout-manager');
-            end);
-        end
-        for buildID, buildInfo in ipairs(self.levelingBuilds[self.selectedSpecId] or {}) do
-            rootDescription:CreateRadio(
-                string.format(
-                    L['Leveling build %d (%d points spent)'],
-                    buildID,
-                    buildInfo.entriesCount
-                ),
-                isBuildSelected,
-                selectBuild,
-                buildID
-            );
-        end
-    end);
 end
 
 -------------------------

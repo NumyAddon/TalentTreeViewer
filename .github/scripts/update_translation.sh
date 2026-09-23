@@ -12,10 +12,12 @@ fi
 
 declare -A locale_files=(
   ["TalentTreeViewer"]="_TalentTreeViewer_locales.lua"
+  ["TalentTreeViewer_4E"]="_TalentTreeViewer_4E_locales.lua"
   ["TalentTreeViewer_Loader"]="_TalentTreeViewer_Loader_locales.lua"
 )
 declare -A namespace_root=(
   ["TalentTreeViewer"]="TalentTreeViewer_TWW/"
+  ["TalentTreeViewer_4E"]="TalentTreeViewer_4E/"
   ["TalentTreeViewer_Loader"]="TalentTreeViewer_Loader/"
 )
 

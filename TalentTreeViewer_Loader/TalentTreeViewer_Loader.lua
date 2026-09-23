@@ -1,7 +1,15 @@
 local name, ns = ...;
 local displayName = 'Talent Tree Viewer';
 
-if LE_EXPANSION_LEVEL_CURRENT <= LE_EXPANSION_SHADOWLANDS then print(displayName, 'only works on Dragonflight and later') return; end
+local toc = select(4, GetBuildInfo());
+local is4E = toc >= 16000 and toc < 20000;
+local isRetail = toc > 100000;
+
+if not is4E and not isRetail then
+    print(displayName, 'only works in Retail and WoW Forever');
+
+    return;
+end
 
 --- @class TalentViewerLoader
 local TVLoader = {};
@@ -9,7 +17,7 @@ TalentViewerLoader = TVLoader;
 
 local LibDBIcon = LibStub('LibDBIcon-1.0');
 local L = ns.L;
-local lodAddonName = 'TalentTreeViewer_TWW';
+local lodAddonName = isRetail and 'TalentTreeViewer_TWW' or 'TalentTreeViewer_4E';
 
 local frame = CreateFrame('Frame');
 frame:HookScript('OnEvent', function(_, event, ...) TVLoader[event](TVLoader, event, ...); end);

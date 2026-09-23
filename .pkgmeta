@@ -1,6 +1,7 @@
 package-as: TalentTreeViewer_Loader
 
 move-folders:
+    TalentTreeViewer_Loader/TalentTreeViewer_4E: TalentTreeViewer_4E
     TalentTreeViewer_Loader/TalentTreeViewer_TWW: TalentTreeViewer_TWW
     TalentTreeViewer_Loader/TalentTreeViewer_Loader: TalentTreeViewer_Loader
 
@@ -16,5 +17,12 @@ externals:
     TalentTreeViewer_TWW/libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
     TalentTreeViewer_TWW/libs/AceLocale-3.0: https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
     TalentTreeViewer_TWW/libs/LibTalentTree-1.0:
+        url: https://github.com/NumyAddon/LibTalentTree-1.0
+        curse-slug: libtalenttree
+
+    TalentTreeViewer_4E/libs/LibStub: https://repos.wowace.com/wow/ace3/trunk/LibStub
+    TalentTreeViewer_4E/libs/CallbackHandler-1.0: https://repos.wowace.com/wow/ace3/trunk/CallbackHandler-1.0
+    TalentTreeViewer_4E/libs/AceLocale-3.0: https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
+    TalentTreeViewer_4E/libs/LibTalentTree-1.0:
         url: https://github.com/NumyAddon/LibTalentTree-1.0
         curse-slug: libtalenttree

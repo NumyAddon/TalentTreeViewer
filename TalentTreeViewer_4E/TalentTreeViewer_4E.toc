@@ -1,12 +1,12 @@
-## Interface: @toc-version-midnight@, @toc-version-retail@
+## Interface: @toc-version-forever@
 #@debug@
-## Interface: 120000
+## Interface: 16001
 #@end-debug@
-## AllowLoadGameType: standard
-## Title: TalentTree Viewer (TWW UI)
-## Notes: View any spec's talent trees from any character. This module is only for The War Within!
+## ExcludeLoadGameType: standard
+## Title: TalentTree Viewer (Forever UI)
+## Notes: View any spec's talent trees from any character. This module is only for WoW Forever!
 ## Author: Numy
-## IconTexture: Interface\Addons\TalentTreeViewer_TWW\media\icon
+## IconTexture: Interface\Addons\TalentTreeViewer_4E\media\icon
 ## Version: @project-version@
 ## X-Curse-Project-ID: 678279
 ## X-Wago-ID: mKOvjD6x
@@ -32,11 +32,7 @@ locale\locale.xml
 TalentViewer.lua
 
 mixins\TalentViewerUIMixin.lua
-mixins\LevelingSliderMixin.lua
-mixins\LevelingOrderMixin.lua
 mixins\TalentButtonMixin.lua
-mixins\HeroSpecSelectionDialogMixin.lua
 
 ImportExport.lua
-IcyVeinsImport.lua
 TalentViewerUI.xml
