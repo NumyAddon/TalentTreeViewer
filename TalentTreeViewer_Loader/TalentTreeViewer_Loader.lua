@@ -146,7 +146,7 @@ end
 
 function TVLoader:LoadTalentViewer()
     -- force enable, in case someone disabled the lod addon
-    C_AddOns.EnableAddOn(lodAddonName, UnitName('player'));
+    C_AddOns.EnableAddOn(lodAddonName, UnitGUID('player'));
     C_AddOns.LoadAddOn(lodAddonName);
 end
 
@@ -166,9 +166,9 @@ function TVLoader:RegisterToBlizzMove()
     BlizzMoveAPI:RegisterAddOnFrames({
         [lodAddonName] = {
             ['TalentViewer_DF'] = {
-                SubFrames = {
+                SubFrames = isRetail and {
                     ['TalentViewer_DF.Talents.ButtonsParent'] = {},
-                },
+                } or nil,
             },
         },
     });

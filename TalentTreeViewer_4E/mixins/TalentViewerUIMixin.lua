@@ -688,6 +688,7 @@ function TalentViewerUIMixin:OnLoad()
     self.ButtonsParent:SetPoint("BOTTOMRIGHT", self.BottomBar, "TOPRIGHT", 0, 0);
     self.ButtonsParent.SetPoint = nop;
     self.ButtonsParent.ClearAllPoints = nop;
+    self.ButtonsParent:EnableMouse(false);
 
     local hiddenParent = CreateFrame('Frame');
     hiddenParent:Hide();
