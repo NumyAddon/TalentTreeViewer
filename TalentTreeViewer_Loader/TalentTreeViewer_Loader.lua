@@ -107,16 +107,13 @@ function TVLoader:AddButtonToBlizzardTalentFrame()
 end
 
 function TVLoader:HookIntoBlizzardImport()
-    local lastError;
-    local importString;
-
     StaticPopupDialogs["TalentViewerDefaultImportFailedDialog"] = {
         text = LOADOUT_ERROR_WRONG_SPEC .. "\n\n" .. L["Would you like to open the build in Talent Viewer instead?"],
         button1 = OKAY,
         button2 = CLOSE,
         OnAccept = function(dialog)
             ClassTalentLoadoutImportDialog:OnCancel();
-            self:GetTalentViewer():ImportLoadout(importString);
+            self:GetTalentViewer():ImportLoadout(self.importString);
             dialog:Hide();
         end,
         timeout = 0,
@@ -125,19 +122,24 @@ function TVLoader:HookIntoBlizzardImport()
         preferredIndex = 3,
     };
 
+    local lastError;
     local talentsTab = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame;
     hooksecurefunc(talentsTab, 'ImportLoadout', function(_, str)
         if lastError == LOADOUT_ERROR_WRONG_SPEC then
-            importString = str;
             StaticPopup_Hide('LOADOUT_IMPORT_ERROR_DIALOG');
 
-            StaticPopup_Show('TalentViewerDefaultImportFailedDialog');
+            self:ShowImportFailedDialog(str);
         end
         lastError = nil;
     end);
     hooksecurefunc(talentsTab, 'ShowImportError', function(_, error)
         lastError = error;
     end);
+end
+
+function TVLoader:ShowImportFailedDialog(importString)
+    self.importString = importString;
+    StaticPopup_Show('TalentViewerDefaultImportFailedDialog');
 end
 
 function TVLoader:ToggleTalentView()
